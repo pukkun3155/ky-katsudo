@@ -76,6 +76,15 @@
     font-size:14px; font-family:inherit; background:#fff;
   }
   textarea { resize:vertical; min-height:44px; }
+  .fixed-field {
+    padding:8px; background:#f2f4f7; border:1px solid #e0e0e0; border-radius:6px;
+    font-size:14px; color:#444;
+  }
+  .weather-box { margin-top:2px; }
+  .weather-ok { font-size:14px; line-height:1.6; background:#eef6ee; border-left:4px solid #2e7d32; border-radius:6px; padding:10px 12px; }
+  .weather-meta { font-size:11px; color:#888; margin-top:6px; }
+  .weather-loading { font-size:13px; color:#888; padding:10px 0; }
+  .weather-warn { font-size:13px; color:#8a6d00; background:#fff8e1; border:1px solid #ffe082; border-radius:6px; padding:10px 12px; line-height:1.6; }
   select {
     width:100%; padding:6px; border:1px solid #ccc; border-radius:6px; font-size:13px;
   }
@@ -258,7 +267,7 @@
   <!-- ============ HOME ============ -->
   <div id="screenHome" class="screen active">
     <div class="home-card">
-      <button class="big-btn" onclick="startNewFromHome()">今日のKYを作成</button>
+      <button class="big-btn" onclick="startNewFromHome()">KYを作成</button>
     </div>
 
     <div class="home-card" id="draftCard" style="display:none;">
@@ -335,12 +344,17 @@
 const KY_CONFIG = {
   companyName: "中日本ハイウェイ・メンテナンス東名（株）",
   subTitle: "中日本ハイウェイ・メンテナンス東名（株）／清掃作業",
-  schemaVersion: 1, // localStorage/エクスポートJSONのデータ構造バージョン。構造変更時は必ず上げること。
+  schemaVersion: 2, // localStorage/エクスポートJSONのデータ構造バージョン。構造変更時は必ず上げること。
   candidateGroups: 3,      // テーマ数
   variantsPerGroup: 2,     // テーマごとの案数
   maxCandidates: 6,        // candidateGroups * variantsPerGroup
   defaultWorkers: 3,
+  fixedWorkContent: '清掃業務', // 作業内容は自由入力にせずこの内容で固定する
   riskWarnLevels: ['III','IV','V'], // 対策後にこの危険度が残る場合は警告
+
+  // 天気予報取得設定（Open-Meteo。APIキー不要・CORS許可済みでクライアントから直接取得可能）
+  weatherLocation: { name: '駿河湾沼津SA周辺（沼津市）', latitude: 35.09, longitude: 138.86 },
+  weatherForecastMaxDays: 16, // この日数より先の未来日は予報取得対象外として扱う
 
   storageKeys: {
     draft: 'ky_current_draft',
@@ -644,6 +658,107 @@ function seasonOf(month){
   return '冬';
 }
 
+/* =========================================================================
+   天気予報取得（Open-Meteo）
+   ========================================================================= */
+const WEATHER_CODE_LABELS = {
+  0:'快晴', 1:'晴れ', 2:'晴れ時々曇り', 3:'曇り',
+  45:'霧', 48:'霧（霜）',
+  51:'弱い霧雨', 53:'霧雨', 55:'強い霧雨',
+  56:'弱い着氷性の霧雨', 57:'着氷性の霧雨',
+  61:'弱い雨', 63:'雨', 65:'強い雨',
+  66:'弱い着氷性の雨', 67:'着氷性の雨',
+  71:'弱い雪', 73:'雪', 75:'強い雪', 77:'雪あられ',
+  80:'にわか雨（弱）', 81:'にわか雨', 82:'激しいにわか雨',
+  85:'にわか雪（弱）', 86:'にわか雪',
+  95:'雷雨', 96:'雷雨（ひょうを伴う）', 99:'激しい雷雨（ひょうを伴う）'
+};
+function weatherCodeLabel(code){ return WEATHER_CODE_LABELS[code] || `天候コード${code}`; }
+
+function windDirLabel(deg){
+  if(deg==null) return '';
+  const dirs = ['北','北東','東','南東','南','南西','西','北西'];
+  return dirs[Math.round(((deg%360)+360)%360 / 45) % 8];
+}
+
+// 対象日の天気を取得する。予報取得可能範囲外・データ欠落・通信失敗のいずれも
+// 推測で埋めず、呼び出し側にstatusとして明示的に伝える。
+async function fetchWeatherForDate(dateIso){
+  const today = isoFromDate(new Date());
+  const loc = KY_CONFIG.weatherLocation;
+  const diffDays = Math.round((dateFromIso(dateIso) - dateFromIso(today)) / 86400000);
+
+  if(diffDays > KY_CONFIG.weatherForecastMaxDays){
+    return { status:'out_of_range', fetchedAt:new Date().toISOString() };
+  }
+
+  let url, source;
+  if(diffDays < 0){
+    source = 'open-meteo-archive';
+    url = `https://archive-api.open-meteo.com/v1/archive?latitude=${loc.latitude}&longitude=${loc.longitude}`
+      + `&start_date=${dateIso}&end_date=${dateIso}`
+      + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant`
+      + `&hourly=relative_humidity_2m&timezone=Asia%2FTokyo`;
+  } else {
+    source = 'open-meteo-forecast';
+    url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}`
+      + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_sum,precipitation_probability_max,windspeed_10m_max,winddirection_10m_dominant`
+      + `&hourly=relative_humidity_2m&timezone=Asia%2FTokyo&forecast_days=${Math.max(diffDays+1,1)}`;
+  }
+
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    const di = json.daily && json.daily.time ? json.daily.time.indexOf(dateIso) : -1;
+    if(di === -1){
+      return { status:'unavailable', fetchedAt:new Date().toISOString() };
+    }
+    let humidity = null;
+    if(json.hourly && json.hourly.time){
+      const vals = [];
+      json.hourly.time.forEach((t,i)=>{ if(t.startsWith(dateIso)) vals.push(json.hourly.relative_humidity_2m[i]); });
+      if(vals.length) humidity = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+    }
+    const data = {
+      weathercode: json.daily.weathercode[di],
+      tempMax: json.daily.temperature_2m_max[di],
+      tempMin: json.daily.temperature_2m_min[di],
+      apparentTempMax: json.daily.apparent_temperature_max ? json.daily.apparent_temperature_max[di] : null,
+      precipSum: json.daily.precipitation_sum ? json.daily.precipitation_sum[di] : null,
+      precipProbability: json.daily.precipitation_probability_max ? json.daily.precipitation_probability_max[di] : null,
+      windMax: json.daily.windspeed_10m_max[di],
+      windDirection: json.daily.winddirection_10m_dominant[di],
+      humidity
+    };
+    return { status:'ok', source, data, fetchedAt:new Date().toISOString() };
+  }catch(e){
+    return { status:'error', fetchedAt:new Date().toISOString(), errorMessage:String(e && e.message || e) };
+  }
+}
+
+// 危険ポイント候補生成の関連度判定にそのまま使えるよう、雨・強風・猛暑・寒さ等の
+// キーワードを含む一文にまとめる（既存のキーワード一致ロジックをそのまま活かす）。
+function buildWeatherSummary(data){
+  const label = weatherCodeLabel(data.weathercode);
+  const parts = [label, `最高${Math.round(data.tempMax)}℃`, `最低${Math.round(data.tempMin)}℃`];
+  if(data.precipProbability!=null) parts.push(`降水確率${data.precipProbability}%`);
+  else if(data.precipSum!=null) parts.push(`降水量${data.precipSum}mm`);
+  if(data.windMax!=null) parts.push(`${windDirLabel(data.windDirection)}の風　最大${Math.round(data.windMax)}m/s`);
+  if(data.humidity!=null) parts.push(`湿度${data.humidity}%`);
+
+  const tags = [];
+  const heavyRain = (data.precipProbability!=null && data.precipProbability>=50) || (data.precipSum!=null && data.precipSum>=5);
+  if(heavyRain) tags.push('雨');
+  if(data.windMax!=null && data.windMax>=10) tags.push('強風');
+  const feelsLike = data.apparentTempMax!=null ? data.apparentTempMax : data.tempMax;
+  if(feelsLike>=33 || (data.tempMax>=31 && data.humidity!=null && data.humidity>=65)) tags.push('猛暑・熱中症警戒');
+  if(data.tempMin<=3) tags.push('寒気・凍結注意');
+  if(tags.length) parts.push(`（${tags.join('・')}）`);
+
+  return parts.join('　');
+}
+
 function levelInfo(p,s){
   const score = p*s;
   let lvl, name;
@@ -686,8 +801,13 @@ function emptyState(){
     basic: {
       dateIso: isoFromDate(today),
       workers: KY_CONFIG.defaultWorkers,
-      work: '',
-      weather: ''
+      work: KY_CONFIG.fixedWorkContent,
+      weather: '',
+      weatherStatus: null,      // null | 'loading' | 'ok' | 'unavailable' | 'out_of_range' | 'error'
+      weatherDateIso: null,     // weatherStatus/weatherDataがどの日付分の結果かを記録（日付変更時の取り違え防止）
+      weatherFetchedAt: null,
+      weatherSource: null,      // 'open-meteo-forecast' | 'open-meteo-archive' | null
+      weatherData: null         // { weathercode, tempMax, tempMin, apparentTempMax, precipSum, precipProbability, windMax, windDirection, humidity }
     },
     candidates: [],
     ackHighRisk: false,
@@ -996,7 +1116,7 @@ function tryGoToStep(target){
 function renderStep(){
   renderStepDots();
   document.getElementById('prevBtn').disabled = (state.step===1);
-  document.getElementById('nextBtn').textContent = state.step===TOTAL_STEPS ? '完了' : '次へ ▶';
+  document.getElementById('nextBtn').textContent = state.step===TOTAL_STEPS ? '完了' : (state.step===1 ? 'この内容でKY候補を作成' : '次へ ▶');
   const body = document.getElementById('stepBody');
   body.innerHTML = `<div class="step-title">${STEP_TITLES[state.step]}</div>` + stepHtml(state.step);
   bindStepEvents(state.step);
@@ -1032,9 +1152,8 @@ function prevStep(){
 
 function validateStep(step){
   if(step===1){
-    const work = document.getElementById('in_work');
-    if(work && !work.value.trim()){
-      alert('作業内容を入力してください。');
+    if(state.basic.weatherStatus === 'loading'){
+      alert('天気情報を取得中です。少々お待ちください。');
       return false;
     }
     // 候補が未生成、または基本情報を変えて再生成が必要な場合は自動生成
@@ -1070,33 +1189,87 @@ function stepBasicHtml(){
   const b = state.basic;
   return `
     <div class="card">
-      <label>作業日</label>
+      <label>対象日</label>
       <input type="date" id="in_date" value="${b.dateIso}">
+      <label>作業内容</label>
+      <div class="fixed-field">${escHtml(KY_CONFIG.fixedWorkContent)}</div>
       <label>作業員数</label>
       <input type="number" id="in_workers" value="${b.workers}" min="1"> 名
-      <label>作業内容</label>
-      <input type="text" id="in_work" value="${escAttr(b.work)}" placeholder="例：清掃作業（沼津SA上り・沼津SA下り・清水PA）">
-      <label>本日の天気（気温・湿度・風など）</label>
-      <textarea id="in_weather" placeholder="例：曇りのち雨　最高26℃／最低23℃　降水確率60%　熱中症警戒レベル「警戒」">${escHtml(b.weather)}</textarea>
+
+      <label>天気予報（${escHtml(KY_CONFIG.weatherLocation.name)}）</label>
+      <div id="weatherBox" class="weather-box"></div>
     </div>
-    <p class="step-hint">天気・作業内容の情報は、次のステップで表示する危険ポイント候補の選定に使われます。</p>
+    <p class="step-hint">対象日の天気予報を取得し、次のステップで表示する危険ポイント候補の選定に使います。日付を変更すると天気は自動的に取り直されます。</p>
   `;
 }
 
 function bindBasic(){
   const dateEl = document.getElementById('in_date');
   const workersEl = document.getElementById('in_workers');
-  const workEl = document.getElementById('in_work');
-  const weatherEl = document.getElementById('in_weather');
-  [dateEl, workersEl, workEl, weatherEl].forEach(el=>{
-    el.addEventListener('input', ()=>{
-      state.basic.dateIso = dateEl.value;
-      state.basic.workers = parseInt(workersEl.value)||0;
-      state.basic.work = workEl.value;
-      state.basic.weather = weatherEl.value;
-      scheduleSave();
-    });
+  dateEl.addEventListener('change', ()=>{
+    state.basic.dateIso = dateEl.value;
+    scheduleSave();
+    refreshWeatherForCurrentDate();
   });
+  workersEl.addEventListener('input', ()=>{
+    state.basic.workers = parseInt(workersEl.value)||0;
+    scheduleSave();
+  });
+
+  if(state.basic.weatherDateIso !== state.basic.dateIso || !state.basic.weatherStatus){
+    refreshWeatherForCurrentDate();
+  } else {
+    renderWeatherBox();
+  }
+}
+
+async function refreshWeatherForCurrentDate(){
+  const dateIso = state.basic.dateIso;
+  state.basic.weatherStatus = 'loading';
+  state.basic.weatherDateIso = dateIso;
+  renderWeatherBox();
+
+  const result = await fetchWeatherForDate(dateIso);
+  if(!state || state.basic.dateIso !== dateIso) return; // 取得中に日付が変わっていたら古い結果は捨てる
+
+  state.basic.weatherFetchedAt = result.fetchedAt;
+  if(result.status === 'ok'){
+    state.basic.weatherStatus = 'ok';
+    state.basic.weatherSource = result.source;
+    state.basic.weatherData = result.data;
+    state.basic.weather = buildWeatherSummary(result.data);
+  } else {
+    state.basic.weatherStatus = result.status; // 'unavailable' | 'out_of_range' | 'error'
+    state.basic.weatherSource = result.status;
+    state.basic.weatherData = null;
+    state.basic.weather = '';
+  }
+  renderWeatherBox();
+  scheduleSave();
+}
+
+function renderWeatherBox(){
+  const box = document.getElementById('weatherBox');
+  if(!box) return;
+  const st = state.basic.weatherStatus;
+  let html;
+  if(st === 'ok'){
+    const fetchedLabel = state.basic.weatherFetchedAt ? new Date(state.basic.weatherFetchedAt).toLocaleString('ja-JP') : '';
+    const sourceLabel = state.basic.weatherSource === 'open-meteo-archive' ? 'Open-Meteo（実績）' : 'Open-Meteo（予報）';
+    html = `<div class="weather-ok">${escHtml(state.basic.weather)}</div>
+            <div class="weather-meta">取得日時：${fetchedLabel}／出典：${sourceLabel}</div>`;
+  } else if(st === 'out_of_range'){
+    html = `<div class="weather-warn">この日付の天気予報はまだ取得できません（目安：${KY_CONFIG.weatherForecastMaxDays}日先まで）。天気未反映のまま作成するか、日付を変更してください。</div>`;
+  } else if(st === 'unavailable'){
+    html = `<div class="weather-warn">この日付の天気データが見つかりませんでした。天気未反映のまま作成するか、日付を変更してください。</div>`;
+  } else if(st === 'error'){
+    html = `<div class="weather-warn">天気情報の取得に失敗しました（通信エラー）。天気未反映のまま作成するか、後でやり直してください。</div>`;
+  } else {
+    html = `<div class="weather-loading">取得中…</div>`;
+  }
+  box.innerHTML = html;
+  const nextBtn = document.getElementById('nextBtn');
+  if(nextBtn) nextBtn.disabled = (st === 'loading');
 }
 
 /* ---- Step2: 候補選択 ---- */
@@ -1557,6 +1730,7 @@ function duplicateRecord(id){
   const cloned = JSON.parse(JSON.stringify(rec.data));
   cloned.candidates.forEach(c=> c.key = uid());
   cloned.basic.dateIso = isoFromDate(new Date());
+  cloned.basic.work = KY_CONFIG.fixedWorkContent;
   state = {
     recordId: null,
     createdAt: null,
