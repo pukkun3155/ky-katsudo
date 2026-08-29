@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>危険予知（KY）活動表</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:#f2f4f7;
+    margin:0;
+    padding:0;
+    color:#222;
+  }
+  .wrap { max-width:480px; margin:0 auto; padding:14px; }
+  h1 { font-size:19px; text-align:center; margin:10px 0 4px; color:#1a3c6e; }
+  .sub { text-align:center; font-size:12px; color:#666; margin-bottom:6px; }
+  .save-indicator {
+    text-align:center; font-size:11px; color:#2e7d32; min-height:16px; margin-bottom:10px;
+  }
+  .save-indicator.saving { color:#999; }
+
+  .screen { display:none; }
+  .screen.active { display:block; }
+
+  /* ---------- HOME ---------- */
+  .home-card {
+    background:#fff; border-radius:12px; padding:16px;
+    margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  }
+  .home-card h2 {
+    font-size:13px; margin:0 0 10px; color:#1a3c6e;
+    border-left:4px solid #1a3c6e; padding-left:8px;
+  }
+  .big-btn {
+    display:block; width:100%; padding:16px; margin-top:4px;
+    background:#1a3c6e; color:#fff; border:none; border-radius:10px;
+    font-size:16px; font-weight:bold; cursor:pointer;
+  }
+  .sub-btn {
+    display:block; width:100%; padding:12px; margin-top:8px;
+    background:#eef1f5; color:#1a3c6e; border:none; border-radius:8px;
+    font-size:14px; font-weight:bold; cursor:pointer;
+  }
+  .draft-line { font-size:13px; color:#444; margin-bottom:8px; }
+  .draft-line b { color:#1a3c6e; }
+  .link-btn {
+    background:none; border:none; color:#999; font-size:12px; text-decoration:underline;
+    display:block; margin:10px auto 0; cursor:pointer;
+  }
+
+  /* ---------- STEPPER ---------- */
+  .step-dots { display:flex; justify-content:center; gap:6px; margin:6px 0 10px; }
+  .step-dot { width:8px; height:8px; border-radius:50%; background:#ccc; cursor:pointer; }
+  .step-dot.active { background:#1a3c6e; width:18px; border-radius:4px; }
+  .step-dot.done { background:#8bc34a; }
+  .step-title {
+    font-size:16px; font-weight:bold; color:#1a3c6e; text-align:center;
+    margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid #1a3c6e;
+  }
+  .step-hint { font-size:12px; color:#777; margin:-4px 0 10px; }
+
+  /* ---------- CARD / FORM ---------- */
+  .card {
+    background:#fff; border-radius:12px; padding:14px;
+    margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  }
+  .card h2 {
+    font-size:14px; margin:0 0 10px; color:#1a3c6e;
+    border-left:4px solid #1a3c6e; padding-left:8px;
+  }
+  label { display:block; font-size:12px; color:#555; margin:8px 0 3px; }
+  input[type=text], input[type=number], input[type=date], textarea {
+    width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;
+    font-size:14px; font-family:inherit; background:#fff;
+  }
+  textarea { resize:vertical; min-height:44px; }
+  select {
+    width:100%; padding:6px; border:1px solid #ccc; border-radius:6px; font-size:13px;
+  }
+
+  .group-badge {
+    display:inline-block; font-size:10px; font-weight:bold; color:#fff;
+    padding:2px 7px; border-radius:10px; margin-right:6px;
+  }
+  .grp-A { background:#c2185b; }
+  .grp-B { background:#00838f; }
+  .grp-C { background:#6a1b9a; }
+
+  .candidate-card {
+    border:1px solid #e3d9b8; background:#fffdf5;
+    border-radius:8px; padding:10px; margin-bottom:10px;
+  }
+  .candidate-card.off { opacity:0.45; }
+  .cand-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .cand-tag { font-weight:bold; font-size:12px; color:#8a6d00; }
+  .cand-theme { font-size:11px; color:#999; margin-top:2px; }
+  .cand-text { font-size:13px; line-height:1.6; }
+
+  .toggle-switch { position:relative; width:42px; height:22px; flex-shrink:0; }
+  .toggle-switch input { opacity:0; width:0; height:0; }
+  .slider {
+    position:absolute; cursor:pointer; inset:0;
+    background:#ccc; border-radius:22px; transition:.2s;
+  }
+  .slider:before {
+    content:""; position:absolute; height:16px; width:16px; left:3px; bottom:3px;
+    background:white; border-radius:50%; transition:.2s;
+  }
+  input:checked + .slider { background:#2e7d32; }
+  input:checked + .slider:before { transform:translateX(20px); }
+
+  .hazard-edit-card {
+    border:1px solid #e3d9b8; background:#fffdf5;
+    border-radius:8px; padding:12px; margin-bottom:12px;
+  }
+  .hazard-edit-head { font-weight:bold; font-size:13px; color:#8a6d00; margin-bottom:4px; }
+
+  .risk-row { display:flex; gap:6px; margin-top:6px; }
+  .risk-row > div { flex:1; }
+  .risk-row label { margin:2px 0; font-size:11px; }
+  .risk-badge {
+    display:inline-block; margin-top:6px; padding:3px 8px; border-radius:12px;
+    font-size:11px; font-weight:bold; color:#fff;
+  }
+  .lvl-I{background:#4caf50;} .lvl-II{background:#8bc34a;} .lvl-III{background:#ffa000;}
+  .lvl-IV{background:#f4511e;} .lvl-V{background:#c62828;}
+
+  .risk-warning {
+    background:#fdecea; border:1px solid #f4c7c3; color:#c62828;
+    font-size:12px; border-radius:6px; padding:8px 10px; margin-top:8px; line-height:1.5;
+  }
+  .ack-row {
+    background:#fff3e0; border:1px solid #ffcc80; border-radius:8px;
+    padding:10px 12px; font-size:13px; margin-top:6px; display:flex; gap:8px; align-items:flex-start;
+  }
+  .ack-row input { margin-top:3px; }
+
+  .badge-official {
+    display:inline-block; font-size:10px; background:#1a3c6e; color:#fff;
+    padding:2px 6px; border-radius:4px; margin-left:6px;
+  }
+  .badge-trial {
+    display:inline-block; font-size:10px; background:#b26a00; color:#fff;
+    padding:2px 6px; border-radius:4px; margin-left:6px;
+  }
+  .badge-custom {
+    display:inline-block; font-size:10px; background:#999; color:#fff;
+    padding:2px 6px; border-radius:4px; margin-left:6px;
+  }
+  .pointing-note { font-size:11px; color:#8a6d00; margin:6px 0 10px; line-height:1.5; }
+  .word-banner {
+    text-align:center; font-weight:bold; color:#c62828; font-size:13px;
+    margin:0 0 10px;
+  }
+  .pointing-row { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+  .pointing-row input { flex:1; }
+
+  .gen-btn, .regen-btn {
+    display:block; width:100%; padding:13px; margin-top:6px;
+    background:#1a3c6e; color:#fff; border:none; border-radius:8px;
+    font-size:15px; font-weight:bold; cursor:pointer;
+  }
+  .regen-btn { background:#eef1f5; color:#1a3c6e; font-size:13px; padding:10px; }
+
+  /* ---------- PREVIEW CAROUSEL ---------- */
+  .carousel {
+    background:#fff; border-radius:14px; min-height:420px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12); padding:20px 16px;
+    position:relative; display:flex; flex-direction:column;
+  }
+  .page { display:none; flex:1; }
+  .page.active { display:block; }
+  .page-title {
+    font-size:16px; font-weight:bold; color:#1a3c6e; text-align:center;
+    margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid #1a3c6e;
+  }
+  .page-content { font-size:14px; line-height:1.7; }
+  .info-line { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed #ddd; gap:10px; }
+  .info-line span:first-child { color:#666; flex-shrink:0; white-space:nowrap; }
+  .info-line span:last-child { font-weight:bold; font-size:16px; text-align:right; word-break:break-word; }
+
+  .hz-card {
+    background:#fffdf5; border:1px solid #e3d9b8; border-radius:8px;
+    padding:12px; margin-bottom:12px;
+  }
+  .hz-num { font-size:11px; color:#8a6d00; font-weight:bold; margin-bottom:4px; }
+  .hz-text { font-size:14px; margin-bottom:8px; }
+  .hz-scores { display:flex; gap:6px; font-size:11px; flex-wrap:wrap; }
+  .score-chip { background:#eef1f5; padding:4px 7px; border-radius:6px; }
+
+  .goal-card {
+    background:#eef6ee; border-left:4px solid #2e7d32; border-radius:6px;
+    padding:10px 12px; margin-bottom:10px; font-size:14px;
+  }
+  .pt-card {
+    background:#f5f8fc; border-radius:8px; padding:10px 12px; margin-bottom:10px;
+  }
+  .pt-num { font-weight:bold; color:#1a3c6e; }
+  .pt-call { color:#c62828; font-weight:bold; margin-top:3px; }
+  .kun-card, .word-card {
+    padding:10px 12px; margin-bottom:8px; border-radius:8px; font-size:14px;
+    background:#faf7ef; border-left:4px solid #b08d00;
+  }
+  .word-card { background:#f0f5fb; border-left:4px solid #1a3c6e; }
+
+  .nav-row { display:flex; justify-content:space-between; align-items:center; margin-top:16px; gap:8px; }
+  .nav-btn {
+    padding:10px 18px; border:none; border-radius:8px; background:#1a3c6e; color:#fff;
+    font-size:14px; font-weight:bold; cursor:pointer; flex-shrink:0;
+  }
+  .nav-btn:disabled { background:#ccc; }
+  .save-btn { background:#2e7d32; }
+
+  .back-edit { text-align:center; margin-top:10px; }
+  .back-edit button {
+    background:none; border:none; color:#1a3c6e; font-size:13px; text-decoration:underline; cursor:pointer;
+  }
+
+  /* ---------- SAVED LIST ---------- */
+  .saved-item {
+    background:#fff; border-radius:10px; padding:12px; margin-bottom:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  }
+  .saved-item .date { font-size:15px; font-weight:bold; color:#1a3c6e; }
+  .saved-item .meta { font-size:12px; color:#777; margin:4px 0 8px; }
+  .saved-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .saved-actions button {
+    flex:1; min-width:70px; padding:8px; border:none; border-radius:6px;
+    font-size:12px; font-weight:bold; cursor:pointer; background:#eef1f5; color:#1a3c6e;
+  }
+  .saved-actions button.danger { background:#fdecea; color:#c62828; }
+  .empty-note { text-align:center; color:#999; font-size:13px; padding:20px 0; }
+
+  /* ---------- BACKUP TOOLBAR / IMPORT MODAL ---------- */
+  .backup-toolbar { display:flex; gap:8px; margin-bottom:14px; }
+  .backup-toolbar .sub-btn { margin-top:0; font-size:12px; padding:10px 6px; }
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45);
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .modal-overlay.show { display:flex; }
+  .modal-card {
+    background:#fff; border-radius:12px; padding:18px; max-width:400px; width:100%;
+    box-shadow:0 4px 20px rgba(0,0,0,0.25);
+  }
+  .modal-card p { font-size:13px; line-height:1.6; }
+  .modal-actions { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <h1>危険予知（KY）活動表</h1>
+  <div class="sub" id="subtitle"></div>
+  <div class="save-indicator" id="saveIndicator">&nbsp;</div>
+
+  <!-- ============ HOME ============ -->
+  <div id="screenHome" class="screen active">
+    <div class="home-card">
+      <button class="big-btn" onclick="startNewFromHome()">今日のKYを作成</button>
+    </div>
+
+    <div class="home-card" id="draftCard" style="display:none;">
+      <h2>作成中</h2>
+      <div class="draft-line"><b id="draftDateLabel"></b> の下書きがあります</div>
+      <button class="sub-btn" onclick="resumeDraft()">続きから再開する</button>
+      <button class="link-btn" onclick="discardDraftAndNew()">下書きを破棄して新規作成する</button>
+    </div>
+
+    <div class="home-card">
+      <h2>保存済み</h2>
+      <button class="sub-btn" onclick="showScreen('savedList')">一覧を見る（<span id="savedCount">0</span>件）</button>
+    </div>
+  </div>
+
+  <!-- ============ CREATE FLOW ============ -->
+  <div id="screenCreate" class="screen">
+    <div class="step-dots" id="stepDots"></div>
+    <div id="stepBody"></div>
+    <div class="nav-row">
+      <button class="nav-btn" id="prevBtn" onclick="prevStep()">◀ 戻る</button>
+      <button class="nav-btn" id="nextBtn" onclick="nextStep()">次へ ▶</button>
+    </div>
+    <div class="back-edit"><button onclick="goHomeKeepDraft()">← ホームに戻る（下書きは保存されます）</button></div>
+  </div>
+
+  <!-- ============ SAVED LIST ============ -->
+  <div id="screenSavedList" class="screen">
+    <div class="step-title">保存済みKY活動表</div>
+    <div class="backup-toolbar">
+      <button class="sub-btn" onclick="exportRecordsToFile()">⬇ JSONエクスポート</button>
+      <button class="sub-btn" onclick="triggerImportFile()">⬆ JSONインポート</button>
+      <input type="file" id="importFileInput" accept="application/json" style="display:none" onchange="handleImportFile(event)">
+    </div>
+    <div id="savedListBody"></div>
+    <div class="back-edit"><button onclick="showScreen('home')">← ホームに戻る</button></div>
+  </div>
+
+  <!-- ============ IMPORT CONFIRM MODAL ============ -->
+  <div id="importModal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 style="font-size:14px;color:#1a3c6e;margin:0 0 10px;">JSONインポートの確認</h2>
+      <div id="importModalBody"></div>
+      <div class="modal-actions">
+        <button class="sub-btn" onclick="confirmImport('add')">追加する</button>
+        <button class="sub-btn" style="background:#fdecea;color:#c62828;" onclick="confirmImport('replace')">置換する（既存を上書き）</button>
+        <button class="link-btn" style="margin-top:6px;" onclick="closeImportModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ READONLY VIEW ============ -->
+  <div id="screenView" class="screen">
+    <div class="carousel">
+      <div id="viewPagesContainer"></div>
+      <div class="nav-row">
+        <button class="nav-btn" id="viewPrevBtn" onclick="viewNavPage(-1)">◀ 前へ</button>
+        <div class="step-dots" id="viewDots" style="margin:0;"></div>
+        <button class="nav-btn" id="viewNextBtn" onclick="viewNavPage(1)">次へ ▶</button>
+      </div>
+    </div>
+    <div class="back-edit"><button onclick="showScreen('savedList')">← 一覧に戻る</button></div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================================
+   KY_CONFIG — 会社名・候補生成ルール・正式指差呼称9項目・安全十訓・
+   接客10大用語など、仕様に関わる設定をすべてここに集約する。
+   今後の仕様変更（会社名変更、候補数変更、項目文言の変更等）は
+   この KY_CONFIG のみを変更すれば反映される。
+   ========================================================================= */
+const KY_CONFIG = {
+  companyName: "中日本ハイウェイ・メンテナンス東名（株）",
+  subTitle: "中日本ハイウェイ・メンテナンス東名（株）／清掃作業",
+  schemaVersion: 1, // localStorage/エクスポートJSONのデータ構造バージョン。構造変更時は必ず上げること。
+  candidateGroups: 3,      // テーマ数
+  variantsPerGroup: 2,     // テーマごとの案数
+  maxCandidates: 6,        // candidateGroups * variantsPerGroup
+  defaultWorkers: 3,
+  riskWarnLevels: ['III','IV','V'], // 対策後にこの危険度が残る場合は警告
+
+  storageKeys: {
+    draft: 'ky_current_draft',
+    records: 'ky_saved_records'
+  },
+
+  // 正式指差呼称9項目（正本）。これ以外は必ず「※手順書外・独自項目」表示。
+  // 指差呼称マスター。status: 'basic'=正式9項目 / 'trial'=社内試行資料（環境整備版）掲載の追加6項目。
+  // 現時点で写真資料から確認できたのはこの15項目のみ。未確認の項目を推測で追加しない。
+  trialSourceNote: '「指差呼称の定着化に向けた重点項目（試行案）環境整備版」（2025年5月9日付）に掲載。恒久的な正式項目としての採用は未確認。',
+  officialPointing: [
+    // ---- A. 基本9項目（正式） ----
+    { id:1, status:'basic', category:'駐車場清掃時',               call:'服装の確認　良いか',           response:'服装確認　ヨシ',           note:'ヘルメット・安全チョッキ' },
+    { id:2, status:'basic', category:'駐車場清掃時',               call:'前後左右　良いか',             response:'前後左右　ヨシ',           note:'駐車マス移動・横断時' },
+    { id:3, status:'basic', category:'ごみボックス回収時',          call:'カートブレーキの確認　良いか',  response:'カートブレーキ確認　ヨシ', note:'ON・OFF' },
+    { id:4, status:'basic', category:'ごみボックス回収時',          call:'周囲の確認　良いか',           response:'周囲の確認　ヨシ',         note:'移動・横断時' },
+    { id:5, status:'basic', category:'ごみボックス回収時',          call:'輪止めの設置　良いか',         response:'輪止めの設置　ヨシ',       note:'回収作業中' },
+    { id:6, status:'basic', category:'トイレ・休憩施設・商業施設清掃時', call:'周囲の確認　良いか',       response:'周囲の確認　ヨシ',         note:'お客様の状況' },
+    { id:7, status:'basic', category:'トイレ・休憩施設・商業施設清掃時', call:'看板設置　良いか',         response:'看板設置　ヨシ',           note:'内容・設置場所' },
+    { id:8, status:'basic', category:'トイレ・休憩施設・商業施設清掃時', call:'用具の置き忘れ　良いか',   response:'用具の置き忘れ　ヨシ',     note:'作業終了時' },
+    { id:9, status:'basic', category:'防犯対策',                   call:'施錠確認　良いか',             response:'施錠確認　ヨシ',           note:'スタッフルーム等退出時' },
+    // ---- B. 社内「試行案・環境整備版」で確認された追加項目（正式採用は未確定） ----
+    { id:10, status:'trial', category:'用具・道具類',   call:'ゴミカートの状態　良いか',   response:'ゴミカート状態　ヨシ',   note:'ブレーキ・破損等' },
+    { id:11, status:'trial', category:'用具・道具類',   call:'道具の状態　良いか',         response:'道具状態　ヨシ',         note:'ほうき・モップ等の破損' },
+    { id:12, status:'trial', category:'用具・道具類',   call:'保護具の着用　良いか',       response:'保護具の着用　ヨシ',     note:'手袋・ゴーグル等' },
+    { id:13, status:'trial', category:'熱中症対策',     call:'休憩　良いか',               response:'休憩　ヨシ' },
+    { id:14, status:'trial', category:'熱中症対策',     call:'水分補給　良いか',           response:'水分補給　ヨシ' },
+    { id:15, status:'trial', category:'熱中症対策',     call:'熱中症キット配備　良いか',   response:'熱中症キット配備　ヨシ' }
+  ],
+
+  // 安全十訓（正本・変更しない）
+  safetyPrinciples: [
+    { id:1,  text:'事故は、決められたことを守らぬときに、起きやすい' },
+    { id:2,  text:'事故は、慌てた時に、起きやすい' },
+    { id:3,  text:'事故は、仕事の不慣れな時に、起きやすい' },
+    { id:4,  text:'事故は、憶測で仕事をするときに、起きやすい' },
+    { id:5,  text:'事故は、仕事に慣れ過ぎた時に、起きやすい' },
+    { id:6,  text:'事故は、連絡を欠いた時に、起きやすい' },
+    { id:7,  text:'事故は、平素とやり方を変えた時に、起きやすい' },
+    { id:8,  text:'事故は、疲労した時に、起きやすい' },
+    { id:9,  text:'事故は、雑念の起こった時に、起きやすい' },
+    { id:10, text:'事故は、仕事を軽視した時に、起きやすい' }
+  ],
+
+  // 接客10大用語（正本・変更しない）
+  serviceWords: [
+    { id:1,  text:'いらっしゃいませ' },
+    { id:2,  text:'はい、かしこまりました' },
+    { id:3,  text:'少々お待ちくださいませ' },
+    { id:4,  text:'お待たせいたしました' },
+    { id:5,  text:'ありがとうございました' },
+    { id:6,  text:'申し訳ございません' },
+    { id:7,  text:'恐れ入ります' },
+    { id:8,  text:'失礼いたしました' },
+    { id:9,  text:'お疲れ様です' },
+    { id:10, text:'お気をつけて行ってらっしゃいませ' }
+  ],
+  serviceWordsBanner: '★曖昧な接客にならないようにしましょう!!★',
+
+  // 危険ポイント候補テーマプール。3グループ(A/B/C)から各1テーマを状況に応じて選び、
+  // それぞれ2案（合計6候補）を生成する。
+  themePool: [
+    // ---- グループA：お客様・車両・接触系 ----
+    { id:'A_customer', group:'A', label:'お客様との接触',
+      keywords:[{w:'混雑',wt:2},{w:'連休',wt:2},{w:'週末',wt:1.5},{w:'土',wt:1},{w:'日',wt:0.5}],
+      weekendBoost:1,
+      variants:[
+        { hazard:'行楽シーズンで来場者が多く清掃作業員とお客様の動線が交差しやすいので、お客様と接触してしまう危険がある。',
+          pre:{p:3,s:2}, action:'清掃中は動線を確保し、お客様が近づいたら一旦作業を中断して道を譲ります。「順路案内」の声かけを行います。',
+          post:{p:1,s:2}, goal:'お客様の通行を最優先し、接触事故を起こさない。',
+          pointing:[{text:'周囲の確認　良いか'},{text:'お客様への声かけ　良いか'}] },
+        { hazard:'小さなお子様が清掃用具やカートの近くを不意に走り出すことがあるので、接触してけがをさせてしまう危険がある。',
+          pre:{p:2,s:3}, action:'カート移動時は徐行し、周囲にお子様がいないか声を出して確認します。作業エリアにはコーンを設置し注意を促します。',
+          post:{p:1,s:2}, goal:'お子様の飛び出しに注意し、接触事故を起こさない。',
+          pointing:[{text:'周囲の確認　良いか'},{text:'お子様の飛び出し確認　良いか'}] }
+      ] },
+    { id:'A_vehicle', group:'A', label:'車両との接触',
+      keywords:[{w:'駐車場',wt:2},{w:'車両',wt:1.5},{w:'週末',wt:1}],
+      weekendBoost:1,
+      variants:[
+        { hazard:'週末で来場車両が多く駐車場内を移動しながらの清掃作業となるので、お客様の車両と接触する危険がある。',
+          pre:{p:2,s:3}, action:'駐車場清掃中は指差呼称で前後左右を確認し、車両の入退場時は一旦停止して安全確認を徹底します。ヘルメット・安全チョッキを正しく着用します。',
+          post:{p:1,s:2}, goal:'お客様・車両との接触事故を無くす。',
+          pointing:[{text:'服装の確認　良いか'},{text:'前後左右　良いか'}] },
+        { hazard:'繁忙時間帯はバック駐車する車両が多く清掃作業員が車両の死角に入りやすいので、車両にはねられる危険がある。',
+          pre:{p:2,s:3}, action:'バック駐車エリアでは死角に入らない位置で作業し、ドライバーと目が合うまで横断を待ちます。反射材付きベストを着用します。',
+          post:{p:1,s:2}, goal:'車両の死角を意識し、接触事故を起こさない。',
+          pointing:[{text:'前後左右　良いか'},{text:'ドライバーとの目線確認　良いか'}] }
+      ] },
+
+    // ---- グループB：天候・季節・体調系 ----
+    { id:'B_rain', group:'B', label:'雨',
+      keywords:[{w:'雨',wt:3},{w:'降水',wt:2.5},{w:'梅雨',wt:2}],
+      variants:[
+        { hazard:'降水確率が高く通路や床面が濡れやすいので、清掃作業中に滑って転倒する危険がある。',
+          pre:{p:2,s:2}, action:'作業前に床面の水濡れ・滑りやすい箇所を確認し、注意喚起看板を設置します。作業中はこまめに水気を拭き取り、滑りにくい履物を着用します。',
+          post:{p:1,s:1}, goal:'雨天時も焦らず足元確認を徹底し、転倒事故を起こさない。',
+          pointing:[{text:'看板設置　良いか'},{text:'足元の滑り確認　良いか'}] },
+        { hazard:'雨天でスロープや階段が滑りやすくなっているので、清掃用具を運搬中に足を滑らせ転倒する危険がある。',
+          pre:{p:2,s:2}, action:'スロープ・階段では両手が塞がらないよう用具を小分けにして運び、手すりを使用します。滑り止め付きの履物を着用します。',
+          post:{p:1,s:1}, goal:'階段・スロープでの荷物運搬時の転倒に注意する。',
+          pointing:[{text:'用具の置き忘れ　良いか'},{text:'滑り止め履物の確認　良いか'}] }
+      ] },
+    { id:'B_wind', group:'B', label:'強風',
+      keywords:[{w:'風',wt:2.5},{w:'台風',wt:2}],
+      variants:[
+        { hazard:'強風注意報が発表されており看板やのぼりが倒れやすいので、作業中に看板が倒れて接触する危険がある。',
+          pre:{p:2,s:2}, action:'作業前に看板・のぼりの固定状態を確認し、ぐらつきがあれば一時撤去します。強風時は屋外作業を一時中断し安全な場所へ退避します。',
+          post:{p:1,s:1}, goal:'強風時は看板類の固定を確認し、飛来物による事故を起こさない。',
+          pointing:[{text:'看板設置　良いか'},{text:'のぼり・看板の固定確認　良いか'}] },
+        { hazard:'強風でゴミ袋や軽量な用具が飛ばされやすいので、飛来物が歩行者や作業員に当たる危険がある。',
+          pre:{p:2,s:2}, action:'ゴミ袋はまとめて重しを乗せ、飛散防止ネットを使用します。作業後は速やかに回収場所へ運び放置しません。',
+          post:{p:1,s:1}, goal:'強風時のゴミ・用具の飛散を防ぎ、周囲への被害を出さない。',
+          pointing:[{text:'用具の置き忘れ　良いか'},{text:'ゴミ袋の飛散防止確認　良いか'}] }
+      ] },
+    { id:'B_heat', group:'B', label:'猛暑', seasons:['夏'],
+      keywords:[{w:'猛暑',wt:3},{w:'熱中症',wt:3},{w:'暑',wt:1.5}],
+      variants:[
+        { hazard:'最高気温が高く湿度も高いため熱中症警戒レベルとなるので、作業中に熱中症になる危険がある。',
+          pre:{p:2,s:2}, action:'こまめな休憩と水分・塩分補給を徹底し、熱中症キットを携行します。体調に異変を感じたら無理をせず直ちに報告します。',
+          post:{p:1,s:1}, goal:'こまめな水分補給を行い、熱中症を起こさない。',
+          pointing:[{text:'休憩　良いか'},{text:'水分補給　良いか'}] },
+        { hazard:'炎天下の駐車場はアスファルトからの照り返しが強く体温が急上昇しやすいので、作業中にめまいや熱中症を起こす危険がある。',
+          pre:{p:2,s:2}, action:'日陰やミストエリアでの小休止を挟み、冷却タオルを携行します。長時間の直射日光下での連続作業を避け、作業を分散します。',
+          post:{p:1,s:1}, goal:'炎天下では小休止を挟み、めまい・熱中症を防ぐ。',
+          pointing:[{text:'熱中症キット配備　良いか'},{text:'小休止のタイミング確認　良いか'}] }
+      ] },
+    { id:'B_cold', group:'B', label:'寒さ', seasons:['冬'],
+      keywords:[{w:'寒',wt:2.5},{w:'凍結',wt:2.5},{w:'低温',wt:2}],
+      variants:[
+        { hazard:'早朝の気温が低く手がかじかみやすいので、用具の取り扱いを誤り怪我をする危険がある。',
+          pre:{p:2,s:2}, action:'防寒手袋を着用し、作業前に指先の感覚を確認します。冷えた金属製の用具は素手で長時間触れないようにします。',
+          post:{p:1,s:1}, goal:'防寒対策を徹底し、かじかみによる用具の取り扱いミスを防ぐ。',
+          pointing:[{text:'用具の置き忘れ　良いか'},{text:'保護具の着用　良いか'}] },
+        { hazard:'気温が低く路面が凍結する可能性があるので、通路や駐車場で滑って転倒する危険がある。',
+          pre:{p:2,s:2}, action:'凍結が疑われる箇所は事前に目視確認し、必要に応じて融雪剤を散布します。滑りにくい靴底の履物を着用します。',
+          post:{p:1,s:1}, goal:'路面凍結による転倒事故を起こさない。',
+          pointing:[{text:'前後左右　良いか'},{text:'路面凍結の確認　良いか'}] }
+      ] },
+    { id:'B_fatigue', group:'B', label:'疲労',
+      keywords:[{w:'繁忙',wt:2},{w:'連続',wt:1.5},{w:'疲労',wt:2}],
+      variants:[
+        { hazard:'繁忙期で連続勤務が続き疲労が蓄積しているので、注意力が低下し作業中にケガをする危険がある。',
+          pre:{p:2,s:2}, action:'こまめな休憩をとり、体調確認を朝礼で行います。異変を感じたらすぐにリーダーへ報告します。',
+          post:{p:1,s:1}, goal:'疲労による注意力低下を自覚し、無理をしない。',
+          pointing:[{text:'体調確認　良いか'},{text:'休憩　良いか'}] },
+        { hazard:'長時間の中腰・反復作業で腰や肩に負担がかかっているので、腰痛や筋肉痛を悪化させる危険がある。',
+          pre:{p:2,s:1}, action:'中腰作業が続く場合はストレッチを挟み、正しい姿勢で用具を持ち上げます。負担の大きい作業は交代で行います。',
+          post:{p:1,s:1}, goal:'身体への負担を分散し、腰痛・怪我を防ぐ。',
+          pointing:[{text:'姿勢・持ち上げ方の確認　良いか'},{text:'交代のタイミング確認　良いか'}] }
+      ] },
+
+    // ---- グループC：当日の作業内容・混雑・設備系 ----
+    { id:'C_parking', group:'C', label:'駐車場',
+      keywords:[{w:'駐車場',wt:2.5}],
+      variants:[
+        { hazard:'駐車場清掃で白線や車止め付近を移動しながら作業するので、車止めにつまずいて転倒する危険がある。',
+          pre:{p:2,s:2}, action:'車止めの位置を事前に確認し、足元を見ながら移動します。夜間・薄暮時は照明を活用します。',
+          post:{p:1,s:1}, goal:'車止め・段差でのつまずきを防ぐ。',
+          pointing:[{text:'服装の確認　良いか'},{text:'前後左右　良いか'}] },
+        { hazard:'駐車場の清掃範囲が広く一人で長時間作業するので、体調急変時に発見が遅れる危険がある。',
+          pre:{p:2,s:2}, action:'作業開始・終了をリーダーへ報告し、定期的に無線・電話で安全確認を行います。異常時はすぐに連絡します。',
+          post:{p:1,s:1}, goal:'単独作業時の安否確認体制を徹底する。',
+          pointing:[{text:'前後左右　良いか'},{text:'定時連絡の確認　良いか'}] }
+      ] },
+    { id:'C_trash', group:'C', label:'ゴミ回収',
+      keywords:[{w:'ゴミ',wt:2.5},{w:'ごみ',wt:2.5}],
+      variants:[
+        { hazard:'ゴミ回収カートを押しながら坂道やスロープを移動するので、カートが暴走し接触する危険がある。',
+          pre:{p:2,s:3}, action:'坂道ではブレーキを確認してから移動し、後ろ向きで下る際は特に注意します。無理に一人で運ばず必要に応じて応援を呼びます。',
+          post:{p:1,s:2}, goal:'カートの暴走による接触事故を起こさない。',
+          pointing:[{text:'カートブレーキの確認　良いか'},{text:'輪止めの設置　良いか'}] },
+        { hazard:'ゴミ箱内に鋭利なものや割れたガラスが混入していることがあるので、回収作業中に手を切る危険がある。',
+          pre:{p:2,s:2}, action:'厚手の作業手袋を着用し、手を入れる前に中身を目視確認します。危険物を発見した場合は直接触れず専用容器で処理します。',
+          post:{p:1,s:1}, goal:'ゴミ回収時の異物混入による負傷を防ぐ。',
+          pointing:[{text:'周囲の確認　良いか'},{text:'保護具の着用　良いか'}] }
+      ] },
+    { id:'C_cart', group:'C', label:'カート',
+      keywords:[{w:'カート',wt:2.5}],
+      variants:[
+        { hazard:'施設間を移動する際にカートを押して長距離を移動するので、通路の曲がり角でお客様と接触する危険がある。',
+          pre:{p:2,s:2}, action:'曲がり角では一時停止し、周囲を確認してから進みます。見通しの悪い場所はカートを一旦止めて声をかけます。',
+          post:{p:1,s:1}, goal:'カート移動時の接触事故を起こさない。',
+          pointing:[{text:'カートブレーキの確認　良いか'},{text:'周囲の確認　良いか'}] },
+        { hazard:'カートに用具や資材を積みすぎることがあるので、荷崩れして落下物により負傷する危険がある。',
+          pre:{p:2,s:2}, action:'積載量の上限を決めて守り、重いものは下に軽いものは上に積みます。固定ベルトを使用します。',
+          post:{p:1,s:1}, goal:'カートの荷崩れによる負傷を防ぐ。',
+          pointing:[{text:'ゴミカートの状態　良いか'},{text:'積載量の確認　良いか'}] }
+      ] },
+    { id:'C_toilet', group:'C', label:'トイレ清掃',
+      keywords:[{w:'トイレ',wt:2.5}],
+      variants:[
+        { hazard:'トイレ清掃中に洗剤を使用し床が濡れるので、利用客や作業員が滑って転倒する危険がある。',
+          pre:{p:2,s:2}, action:'清掃中は「清掃中」看板を設置し、床が乾くまで通行を制限します。洗剤使用後はモップで水気を除去します。',
+          post:{p:1,s:1}, goal:'洗剤使用時の転倒事故を起こさない。',
+          pointing:[{text:'看板設置　良いか'},{text:'周囲の確認　良いか'}] },
+        { hazard:'洗剤や薬剤を複数種類使用するので、誤って混合し有毒ガスが発生する危険がある。',
+          pre:{p:1,s:3}, action:'薬剤は用途ごとに色分けし、混ぜて使わないことを徹底します。換気を確保し、異臭を感じたら直ちに作業を中止します。',
+          post:{p:1,s:2}, goal:'薬剤の誤混合による事故を起こさない。',
+          pointing:[{text:'保護具の着用　良いか'},{text:'薬剤の種類確認　良いか'}] }
+      ] },
+    { id:'C_facility', group:'C', label:'商業施設清掃',
+      keywords:[{w:'商業施設',wt:2.5},{w:'施設',wt:1.5}],
+      variants:[
+        { hazard:'営業中の商業施設内で清掃するので、来店客と接触したりモップで滑らせたりする危険がある。',
+          pre:{p:2,s:2}, action:'清掃中は「清掃中」看板を設置し、来店客の動線を避けて作業します。混雑時間帯は作業範囲を分割します。',
+          post:{p:1,s:1}, goal:'営業中の施設内での接触事故を起こさない。',
+          pointing:[{text:'看板設置　良いか'},{text:'周囲の確認　良いか'}] },
+        { hazard:'高所の窓や照明を清掃することがあるので、脚立から転落する危険がある。',
+          pre:{p:2,s:3}, action:'脚立使用前に安定性を確認し、必ず2人体制で使用します。無理な体勢での作業は行いません。',
+          post:{p:1,s:2}, goal:'高所作業時の転落事故を起こさない。',
+          pointing:[{text:'用具の置き忘れ　良いか'},{text:'脚立の安定確認　良いか'}] }
+      ] },
+    { id:'C_crowd', group:'C', label:'混雑',
+      keywords:[{w:'混雑',wt:2.5},{w:'連休',wt:2}], weekendBoost:1.5,
+      variants:[
+        { hazard:'連休で来場者が普段より多く館内が混雑するので、清掃動線とお客様の動線が交錯し接触する危険がある。',
+          pre:{p:2,s:2}, action:'混雑時間帯は清掃範囲を細分化し、人の流れが落ち着いた時間帯に主要作業を行います。作業中は都度周囲を確認します。',
+          post:{p:1,s:1}, goal:'混雑時でもお客様優先の動線を守り、接触事故を起こさない。',
+          pointing:[{text:'前後左右　良いか'},{text:'周囲の確認　良いか'}] },
+        { hazard:'混雑によりゴミ箱がすぐ満杯になるので、あふれたゴミで通路が塞がれ転倒を誘発する危険がある。',
+          pre:{p:2,s:2}, action:'混雑が予想される時間帯はゴミ回収の頻度を増やし、あふれる前に対応します。回収後は通路が塞がっていないか確認します。',
+          post:{p:1,s:1}, goal:'ゴミあふれによる通路の危険を未然に防ぐ。',
+          pointing:[{text:'周囲の確認　良いか'},{text:'ゴミ回収頻度の確認　良いか'}] }
+      ] },
+    { id:'C_night', group:'C', label:'夜間', seasons:['冬'],
+      keywords:[{w:'夜間',wt:2.5},{w:'夜',wt:1.5}],
+      variants:[
+        { hazard:'日没が早く夜間の視界が悪くなるので、作業員や利用客が段差や車両に気づかず事故になる危険がある。',
+          pre:{p:2,s:3}, action:'反射材付きベストとヘッドライトを使用し、暗くなる前に照明の点灯状態を確認します。危険箇所には目印を設置します。',
+          post:{p:1,s:2}, goal:'夜間作業時の視認性を確保し、事故を起こさない。',
+          pointing:[{text:'施錠確認　良いか'},{text:'前後左右　良いか'}] },
+        { hazard:'夜間は人通りが少なく不審者への警戒が薄れやすいので、防犯上のトラブルに巻き込まれる危険がある。',
+          pre:{p:1,s:2}, action:'夜間作業は複数人体制を基本とし、施錠・戸締りを都度確認します。不審者を見かけたら速やかにリーダー・警備へ連絡します。',
+          post:{p:1,s:1}, goal:'夜間の防犯意識を高め、トラブルを未然に防ぐ。',
+          pointing:[{text:'施錠確認　良いか'},{text:'複数人体制の確認　良いか'}] }
+      ] },
+    { id:'C_tool', group:'C', label:'用具',
+      keywords:[{w:'薬剤',wt:1.5},{w:'用具',wt:2}],
+      variants:[
+        { hazard:'多くの清掃用具・薬剤を使い分けながら作業するので、用具の置き忘れによる事故やつまずきが起きる危険がある。',
+          pre:{p:2,s:2}, action:'使用した用具はその都度所定の位置に戻し、作業終了時に用具リストで数を確認します。通路に用具を放置しません。',
+          post:{p:1,s:1}, goal:'用具の置き忘れによる事故を防ぐ。',
+          pointing:[{text:'用具の置き忘れ　良いか'},{text:'道具の状態　良いか'}] },
+        { hazard:'電動清掃機器のコードを使用するので、コードに足を引っ掛けて転倒する危険がある。',
+          pre:{p:2,s:2}, action:'コードは通路を避けて配線し、コードカバーを使用します。作業終了後は速やかに巻き取ります。',
+          post:{p:1,s:1}, goal:'電動機器のコードによる転倒事故を防ぐ。',
+          pointing:[{text:'用具の置き忘れ　良いか'},{text:'コード配線の確認　良いか'}] }
+      ] },
+    { id:'C_infection', group:'C', label:'感染症', seasons:['冬'],
+      keywords:[{w:'感染',wt:3},{w:'インフルエンザ',wt:2.5},{w:'風邪',wt:1.5}],
+      variants:[
+        { hazard:'トイレ・共用部の清掃で汚物や飛沫に触れる機会が多いので、感染症にかかる危険がある。',
+          pre:{p:2,s:2}, action:'使い捨て手袋とマスクを着用し、作業後は石鹸で十分に手洗い・消毒を行います。使用した手袋はすぐに廃棄します。',
+          post:{p:1,s:1}, goal:'感染症対策を徹底し、体調不良者を出さない。',
+          pointing:[{text:'保護具の着用　良いか'},{text:'手指消毒の実施確認　良いか'}] },
+        { hazard:'季節性の感染症が流行する時期で作業員同士が近い距離で作業することがあるので、感染が広がる危険がある。',
+          pre:{p:2,s:2}, action:'こまめな換気と手指消毒を行い、体調不良の兆候がある場合は無理せず報告・休養します。共用の用具は使用後に消毒します。',
+          post:{p:1,s:1}, goal:'作業員間での感染拡大を防ぐ。',
+          pointing:[{text:'体調確認　良いか'},{text:'用具の消毒確認　良いか'}] }
+      ] },
+    { id:'C_trip', group:'C', label:'転倒',
+      keywords:[{w:'段差',wt:2},{w:'濡れ',wt:1.5}],
+      variants:[
+        { hazard:'施設内に段差やケーブル・マットのめくれ等があるので、清掃移動中につまずいて転倒する危険がある。',
+          pre:{p:2,s:2}, action:'作業前に通路の段差やめくれを点検し、危険箇所には注意表示をします。足元を確認しながら移動します。',
+          post:{p:1,s:1}, goal:'段差・つまずきによる転倒事故を防ぐ。',
+          pointing:[{text:'前後左右　良いか'},{text:'段差・めくれの点検　良いか'}] },
+        { hazard:'清掃で使用したモップやバケツの水がこぼれて床が濡れるので、自分自身が滑って転倒する危険がある。',
+          pre:{p:2,s:2}, action:'作業中はこぼれた水をその都度拭き取り、バケツの持ち運びは慎重に行います。滑りにくい靴を着用します。',
+          post:{p:1,s:1}, goal:'自らの作業でこぼれた水による転倒を防ぐ。',
+          pointing:[{text:'周囲の確認　良いか'},{text:'床の水濡れ確認　良いか'}] }
+      ] }
+  ]
+};
+
+/* =========================================================================
+   ユーティリティ
+   ========================================================================= */
+const WEEKDAY_KANJI = ['日','月','火','水','木','金','土'];
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function isoFromDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+
+function dateFromIso(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function formatDateJP(iso){
+  if(!iso) return '';
+  const d = dateFromIso(iso);
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WEEKDAY_KANJI[d.getDay()]}）`;
+}
+
+function seasonOf(month){
+  if(month>=3 && month<=5) return '春';
+  if(month>=6 && month<=8) return '夏';
+  if(month>=9 && month<=11) return '秋';
+  return '冬';
+}
+
+function levelInfo(p,s){
+  const score = p*s;
+  let lvl, name;
+  if(score===1){lvl='I';name='極めて小さい';}
+  else if(score===2){lvl='II';name='かなり小さい';}
+  else if(score>=3 && score<=4){lvl='III';name='中程度';}
+  else if(score===6){lvl='IV';name='かなり大きい';}
+  else {lvl='V';name='極めて大きい';}
+  return {score, lvl, name};
+}
+
+function isOfficialText(text){
+  return KY_CONFIG.officialPointing.find(o => o.call === (text||'').trim());
+}
+
+// 指差呼称の分類バッジHTMLを一箇所で生成する（basic=手順書／trial=試行案／custom=独自項目）
+function pointingBadgeHtml(text){
+  const match = isOfficialText(text);
+  if(match && match.status==='basic') return '<span class="badge-official">手順書</span>';
+  if(match && match.status==='trial') return '<span class="badge-trial">試行案（未確定）</span>';
+  return '<span class="badge-custom">※手順書外・独自項目</span>';
+}
+
+function uid(){ return 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+
+function nowLabel(){
+  const d = new Date();
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
+/* =========================================================================
+   状態管理・永続化
+   ========================================================================= */
+function emptyState(){
+  const today = new Date();
+  return {
+    recordId: null,
+    createdAt: null,
+    step: 1,
+    basic: {
+      dateIso: isoFromDate(today),
+      workers: KY_CONFIG.defaultWorkers,
+      work: '',
+      weather: ''
+    },
+    candidates: [],
+    ackHighRisk: false,
+    kun1: 1, kun2: 8,
+    word1: 1, word2: 5,
+    updatedAt: null
+  };
+}
+
+let state = null;
+let saveTimer = null;
+
+function scheduleSave(){
+  document.getElementById('saveIndicator').textContent = '保存中…';
+  document.getElementById('saveIndicator').classList.add('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    if(!state) return; // 保存完了・ホーム遷移などで state が破棄された後は何もしない
+    state.updatedAt = new Date().toISOString();
+    localStorage.setItem(KY_CONFIG.storageKeys.draft, JSON.stringify(state));
+    const el = document.getElementById('saveIndicator');
+    el.textContent = `自動保存済み（${nowLabel()}）`;
+    el.classList.remove('saving');
+  }, 250);
+}
+
+function loadDraft(){
+  try{
+    const raw = localStorage.getItem(KY_CONFIG.storageKeys.draft);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+
+function clearDraft(){
+  localStorage.removeItem(KY_CONFIG.storageKeys.draft);
+}
+
+function loadRecords(){
+  try{
+    const raw = localStorage.getItem(KY_CONFIG.storageKeys.records);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+
+function saveRecords(list){
+  localStorage.setItem(KY_CONFIG.storageKeys.records, JSON.stringify(list));
+}
+
+/* =========================================================================
+   バックアップ（JSONエクスポート／インポート）
+   file:// と固定URL（GitHub Pages等）とでlocalStorageのoriginが分かれるため、
+   移行や機種変更時はエクスポート→インポートで保存済みKYを引き継ぐ。
+   ========================================================================= */
+function exportRecordsToFile(){
+  const payload = {
+    schemaVersion: KY_CONFIG.schemaVersion,
+    exportedAt: new Date().toISOString(),
+    savedRecords: loadRecords()
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const d = new Date();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ky_export_${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function triggerImportFile(){
+  document.getElementById('importFileInput').click();
+}
+
+let pendingImport = null;
+
+function handleImportFile(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let parsed;
+    try{
+      parsed = JSON.parse(reader.result);
+    }catch(e){
+      alert('JSONファイルの読み込みに失敗しました。ファイル形式を確認してください。');
+      event.target.value = '';
+      return;
+    }
+    if(!parsed || !Array.isArray(parsed.savedRecords)){
+      alert('インポートできる形式ではありません（savedRecordsが見つかりません）。');
+      event.target.value = '';
+      return;
+    }
+    pendingImport = parsed;
+    showImportModal(parsed);
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function showImportModal(parsed){
+  const versionMismatch = parsed.schemaVersion !== KY_CONFIG.schemaVersion;
+  const count = parsed.savedRecords.length;
+  const currentCount = loadRecords().length;
+  document.getElementById('importModalBody').innerHTML = `
+    <p>インポートするファイル：<b>${count}件</b>のKY活動表</p>
+    <p>ファイルのschemaVersion：<b>${escHtml(String(parsed.schemaVersion))}</b>（アプリ側：${KY_CONFIG.schemaVersion}）</p>
+    ${versionMismatch ? `<p style="color:#c62828;font-weight:bold;">⚠ schemaVersionが一致しません。データ構造が異なる可能性があります。内容を確認のうえ進めてください。</p>` : ''}
+    <p>現在の保存済みデータ（${currentCount}件）にどう反映しますか？</p>
+  `;
+  document.getElementById('importModal').classList.add('show');
+}
+
+function closeImportModal(){
+  document.getElementById('importModal').classList.remove('show');
+  pendingImport = null;
+}
+
+function confirmImport(mode){
+  if(!pendingImport) return;
+  const incoming = pendingImport.savedRecords;
+  if(mode==='replace'){
+    const existing = loadRecords();
+    if(!confirm(`既存の${existing.length}件を破棄し、インポートした${incoming.length}件に置き換えます。この操作は元に戻せません。よろしいですか？`)) return;
+    saveRecords(incoming);
+  } else if(mode==='add'){
+    const existing = loadRecords();
+    const existingIds = new Set(existing.map(r=>r.id));
+    const merged = existing.concat(incoming.filter(r=>!existingIds.has(r.id)));
+    saveRecords(merged);
+  }
+  closeImportModal();
+  renderSavedList();
+  refreshHome();
+  alert('インポートが完了しました。');
+}
+
+/* =========================================================================
+   候補生成
+   ========================================================================= */
+function buildContextText(basic){
+  return `${basic.work||''} ${basic.weather||''}`.trim();
+}
+
+function scoreTheme(theme, ctx){
+  let score = 0.15; // 常にどのテーマにも選ばれる可能性を残すベース値
+  (theme.keywords||[]).forEach(k=>{
+    if(ctx.text.includes(k.w)) score += k.wt;
+  });
+  if(theme.weekendBoost && ctx.isWeekend) score += theme.weekendBoost;
+  if(theme.seasons && theme.seasons.includes(ctx.season)) score += 1;
+  return score + Math.random()*0.5; // 日によって偏らないよう揺らぎを持たせる
+}
+
+function pickThemeForGroup(group, ctx){
+  const themes = KY_CONFIG.themePool.filter(t=>t.group===group);
+  let best = null, bestScore = -1;
+  themes.forEach(t=>{
+    const sc = scoreTheme(t, ctx);
+    if(sc > bestScore){ bestScore = sc; best = t; }
+  });
+  return best;
+}
+
+function generateCandidates(basic){
+  const d = dateFromIso(basic.dateIso || isoFromDate(new Date()));
+  const ctx = {
+    text: buildContextText(basic),
+    isWeekend: (d.getDay()===0 || d.getDay()===6),
+    season: seasonOf(d.getMonth()+1)
+  };
+  const groups = ['A','B','C'];
+  const candidates = [];
+  groups.forEach(g=>{
+    const theme = pickThemeForGroup(g, ctx);
+    theme.variants.forEach((v, vi)=>{
+      candidates.push({
+        key: uid(),
+        group: g,
+        themeId: theme.id,
+        themeLabel: theme.label,
+        variantLabel: `${g}${vi+1}`,
+        adopted: vi===0,
+        hazard: v.hazard,
+        pre: { p: v.pre.p, s: v.pre.s },
+        action: v.action,
+        post: { p: v.post.p, s: v.post.s },
+        goal: v.goal,
+        pointing: v.pointing.map(p=>({ text: p.text }))
+      });
+    });
+  });
+  return candidates;
+}
+
+/* =========================================================================
+   画面切り替え
+   ========================================================================= */
+function showScreen(name){
+  ['home','create','savedList','view'].forEach(n=>{
+    document.getElementById('screen' + n[0].toUpperCase() + n.slice(1)).classList.remove('active');
+  });
+  const map = { home:'screenHome', create:'screenCreate', savedList:'screenSavedList', view:'screenView' };
+  document.getElementById(map[name]).classList.add('active');
+}
+
+function refreshHome(){
+  document.getElementById('subtitle').textContent = KY_CONFIG.subTitle;
+  const draft = loadDraft();
+  const draftCard = document.getElementById('draftCard');
+  if(draft && draft.basic && (draft.basic.work || draft.candidates.length)){
+    draftCard.style.display = 'block';
+    document.getElementById('draftDateLabel').textContent = formatDateJP(draft.basic.dateIso) || '（日付未設定）';
+  } else {
+    draftCard.style.display = 'none';
+  }
+  document.getElementById('savedCount').textContent = loadRecords().length;
+}
+
+function startNewFromHome(){
+  const existing = loadDraft();
+  if(existing && existing.basic && (existing.basic.work || existing.candidates.length)){
+    if(!confirm('作成中の下書きがあります。続きから再開しますか？\n（キャンセルすると新規作成に進みます）')){
+      if(!confirm('新規作成すると現在の下書きは上書きされます。よろしいですか？')) return;
+      state = emptyState();
+    } else {
+      state = existing;
+    }
+  } else {
+    state = emptyState();
+  }
+  goToCreate();
+}
+
+function resumeDraft(){
+  state = loadDraft() || emptyState();
+  goToCreate();
+}
+
+function discardDraftAndNew(){
+  if(!confirm('作成中の下書きを破棄して新規作成します。よろしいですか？')) return;
+  clearDraft();
+  state = emptyState();
+  goToCreate();
+}
+
+function goToCreate(){
+  showScreen('create');
+  renderStep();
+}
+
+function goHomeKeepDraft(){
+  scheduleSaveNow();
+  showScreen('home');
+  refreshHome();
+}
+
+function scheduleSaveNow(){
+  clearTimeout(saveTimer);
+  state.updatedAt = new Date().toISOString();
+  localStorage.setItem(KY_CONFIG.storageKeys.draft, JSON.stringify(state));
+  document.getElementById('saveIndicator').textContent = `自動保存済み（${nowLabel()}）`;
+}
+
+/* =========================================================================
+   ステッパー本体
+   ========================================================================= */
+const STEP_TITLES = [
+  '',
+  '① 基本情報',
+  '② 危険ポイント候補（採用する案を選択）',
+  '③ 内容編集（危険ポイント・対策）',
+  '④ 本日の安全目標',
+  '⑤ 指差呼称・安全十訓・接客10大用語',
+  '⑥ 最終確認・保存'
+];
+const TOTAL_STEPS = 6;
+
+function renderStepDots(){
+  const el = document.getElementById('stepDots');
+  el.innerHTML = '';
+  for(let i=1;i<=TOTAL_STEPS;i++){
+    const dot = document.createElement('div');
+    dot.className = 'step-dot' + (i===state.step?' active':'') + (i<state.step?' done':'');
+    dot.onclick = ()=>{ if(i<=state.step || i===state.step+1) tryGoToStep(i); else tryGoToStep(i); };
+    el.appendChild(dot);
+  }
+}
+
+function tryGoToStep(target){
+  if(target === state.step){ return; }
+  if(target > state.step){
+    // 前進はバリデーションを通す
+    while(state.step < target){
+      if(!validateStep(state.step)) return;
+      state.step++;
+    }
+  } else {
+    state.step = target;
+  }
+  renderStep();
+}
+
+function renderStep(){
+  renderStepDots();
+  document.getElementById('prevBtn').disabled = (state.step===1);
+  document.getElementById('nextBtn').textContent = state.step===TOTAL_STEPS ? '完了' : '次へ ▶';
+  const body = document.getElementById('stepBody');
+  body.innerHTML = `<div class="step-title">${STEP_TITLES[state.step]}</div>` + stepHtml(state.step);
+  bindStepEvents(state.step);
+  scheduleSave();
+}
+
+function stepHtml(step){
+  if(step===1) return stepBasicHtml();
+  if(step===2) return stepCandidatesHtml();
+  if(step===3) return stepEditHtml();
+  if(step===4) return stepGoalHtml();
+  if(step===5) return stepPointingHtml();
+  if(step===6) return stepFinalHtml();
+  return '';
+}
+
+function nextStep(){
+  if(state.step === TOTAL_STEPS){
+    // 完了 = ホームへ（保存は最終ステップ内のボタンで行う）
+    goHomeKeepDraft();
+    return;
+  }
+  if(!validateStep(state.step)) return;
+  state.step++;
+  renderStep();
+}
+
+function prevStep(){
+  if(state.step===1) return;
+  state.step--;
+  renderStep();
+}
+
+function validateStep(step){
+  if(step===1){
+    const work = document.getElementById('in_work');
+    if(work && !work.value.trim()){
+      alert('作業内容を入力してください。');
+      return false;
+    }
+    // 候補が未生成、または基本情報を変えて再生成が必要な場合は自動生成
+    if(state.candidates.length===0){
+      state.candidates = generateCandidates(state.basic);
+    }
+    return true;
+  }
+  if(step===2){
+    if(!state.candidates.some(c=>c.adopted)){
+      alert('危険ポイント候補を1つ以上選択してください。');
+      return false;
+    }
+    return true;
+  }
+  if(step===3){
+    const warn = adoptedList().some(c=>KY_CONFIG.riskWarnLevels.includes(levelInfo(c.post.p,c.post.s).lvl));
+    if(warn && !state.ackHighRisk){
+      alert('対策後の危険度がⅢ以上の項目があります。対策を見直すか、確認チェックを入れてください。');
+      return false;
+    }
+    return true;
+  }
+  return true;
+}
+
+function adoptedList(){
+  return state.candidates.filter(c=>c.adopted);
+}
+
+/* ---- Step1: 基本情報 ---- */
+function stepBasicHtml(){
+  const b = state.basic;
+  return `
+    <div class="card">
+      <label>作業日</label>
+      <input type="date" id="in_date" value="${b.dateIso}">
+      <label>作業員数</label>
+      <input type="number" id="in_workers" value="${b.workers}" min="1"> 名
+      <label>作業内容</label>
+      <input type="text" id="in_work" value="${escAttr(b.work)}" placeholder="例：清掃作業（沼津SA上り・沼津SA下り・清水PA）">
+      <label>本日の天気（気温・湿度・風など）</label>
+      <textarea id="in_weather" placeholder="例：曇りのち雨　最高26℃／最低23℃　降水確率60%　熱中症警戒レベル「警戒」">${escHtml(b.weather)}</textarea>
+    </div>
+    <p class="step-hint">天気・作業内容の情報は、次のステップで表示する危険ポイント候補の選定に使われます。</p>
+  `;
+}
+
+function bindBasic(){
+  const dateEl = document.getElementById('in_date');
+  const workersEl = document.getElementById('in_workers');
+  const workEl = document.getElementById('in_work');
+  const weatherEl = document.getElementById('in_weather');
+  [dateEl, workersEl, workEl, weatherEl].forEach(el=>{
+    el.addEventListener('input', ()=>{
+      state.basic.dateIso = dateEl.value;
+      state.basic.workers = parseInt(workersEl.value)||0;
+      state.basic.work = workEl.value;
+      state.basic.weather = weatherEl.value;
+      scheduleSave();
+    });
+  });
+}
+
+/* ---- Step2: 候補選択 ---- */
+function stepCandidatesHtml(){
+  if(state.candidates.length===0){
+    state.candidates = generateCandidates(state.basic);
+  }
+  const groupLabel = { A:'グループA：お客様・車両・接触系', B:'グループB：天候・季節・体調系', C:'グループC：作業内容・混雑・設備系' };
+  let html = '<div class="card"><p class="step-hint" style="margin-top:0;">状況に応じて選ばれた3テーマ×2案、計6候補です。採用するものをON/OFFで選んでください（1〜3個程度が目安）。文言は次のステップで自由に編集できます。</p>';
+  ['A','B','C'].forEach(g=>{
+    const items = state.candidates.filter(c=>c.group===g);
+    if(items.length===0) return;
+    html += `<div style="margin:10px 0 4px;"><span class="group-badge grp-${g}">${g}</span><b style="font-size:12px;color:#555;">${groupLabel[g]}（${items[0].themeLabel}）</b></div>`;
+    items.forEach(c=>{
+      html += `
+        <div class="candidate-card ${c.adopted?'':'off'}" id="cand_${c.key}">
+          <div class="cand-head">
+            <div>
+              <span class="cand-tag">候補${c.variantLabel}</span>
+              <div class="cand-theme">${c.themeLabel}</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" ${c.adopted?'checked':''} data-key="${c.key}" class="cand-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="cand-text">${escHtml(c.hazard)}</div>
+        </div>`;
+    });
+  });
+  html += '</div><button class="regen-btn" id="regenBtn">🔄 候補を再生成する</button>';
+  return html;
+}
+
+function bindCandidates(){
+  document.querySelectorAll('.cand-toggle').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const c = state.candidates.find(x=>x.key===cb.dataset.key);
+      c.adopted = cb.checked;
+      document.getElementById('cand_'+c.key).classList.toggle('off', !c.adopted);
+      scheduleSave();
+    });
+  });
+  const regen = document.getElementById('regenBtn');
+  if(regen){
+    regen.addEventListener('click', ()=>{
+      if(!confirm('候補を再生成します。現在の候補・編集内容は失われます。よろしいですか？')) return;
+      state.candidates = generateCandidates(state.basic);
+      renderStep();
+    });
+  }
+}
+
+/* ---- Step3: 内容編集 ---- */
+function stepEditHtml(){
+  const list = adoptedList();
+  let html = '';
+  list.forEach((c, idx)=>{
+    const pre = levelInfo(c.pre.p, c.pre.s);
+    const post = levelInfo(c.post.p, c.post.s);
+    const warn = KY_CONFIG.riskWarnLevels.includes(post.lvl);
+    html += `
+      <div class="hazard-edit-card" data-key="${c.key}">
+        <div class="hazard-edit-head">危険ポイント${idx+1}（${c.themeLabel}）</div>
+        <label>危険ポイント（〜なので〜になる）</label>
+        <textarea class="ed_hazard">${escHtml(c.hazard)}</textarea>
+        <div class="risk-row">
+          <div><label>可能性</label>
+            <select class="ed_pre_p">
+              <option value="1" ${c.pre.p===1?'selected':''}>1:ほとんど起こらない</option>
+              <option value="2" ${c.pre.p===2?'selected':''}>2:たまに起こる</option>
+              <option value="3" ${c.pre.p===3?'selected':''}>3:かなり起こる</option>
+            </select>
+          </div>
+          <div><label>重大性</label>
+            <select class="ed_pre_s">
+              <option value="1" ${c.pre.s===1?'selected':''}>1:軽傷</option>
+              <option value="2" ${c.pre.s===2?'selected':''}>2:中度</option>
+              <option value="3" ${c.pre.s===3?'selected':''}>3:死亡・障害</option>
+            </select>
+          </div>
+        </div>
+        <div class="badge-area pre-badge">評価点${pre.score}／危険度<span class="risk-badge lvl-${pre.lvl}">${pre.lvl}（${pre.name}）</span></div>
+
+        <label style="margin-top:12px;">私達はこうします（対策）</label>
+        <textarea class="ed_action">${escHtml(c.action)}</textarea>
+        <div class="risk-row">
+          <div><label>可能性(対策後)</label>
+            <select class="ed_post_p">
+              <option value="1" ${c.post.p===1?'selected':''}>1:ほとんど起こらない</option>
+              <option value="2" ${c.post.p===2?'selected':''}>2:たまに起こる</option>
+              <option value="3" ${c.post.p===3?'selected':''}>3:かなり起こる</option>
+            </select>
+          </div>
+          <div><label>重大性(対策後)</label>
+            <select class="ed_post_s">
+              <option value="1" ${c.post.s===1?'selected':''}>1:軽傷</option>
+              <option value="2" ${c.post.s===2?'selected':''}>2:中度</option>
+              <option value="3" ${c.post.s===3?'selected':''}>3:死亡・障害</option>
+            </select>
+          </div>
+        </div>
+        <div class="badge-area post-badge">評価点${post.score}／危険度<span class="risk-badge lvl-${post.lvl}">${post.lvl}（${post.name}）</span></div>
+        ${warn ? `<div class="risk-warning">⚠ 対策後の危険度がⅡを超えています（原則Ⅱ以下を目標としてください）。対策内容を見直すか、下の確認欄にチェックしてください。</div>` : ''}
+      </div>`;
+  });
+  const anyWarn = list.some(c=>KY_CONFIG.riskWarnLevels.includes(levelInfo(c.post.p,c.post.s).lvl));
+  if(anyWarn){
+    html += `<div class="ack-row">
+      <input type="checkbox" id="ackHighRisk" ${state.ackHighRisk?'checked':''}>
+      <label style="margin:0;" for="ackHighRisk">対策後も危険度Ⅲ以上が残る項目があることを確認しました。このまま次へ進みます。</label>
+    </div>`;
+  }
+  return html;
+}
+
+function bindEdit(){
+  document.querySelectorAll('.hazard-edit-card').forEach(card=>{
+    const key = card.dataset.key;
+    const c = state.candidates.find(x=>x.key===key);
+    const hazardEl = card.querySelector('.ed_hazard');
+    const actionEl = card.querySelector('.ed_action');
+    const prep = card.querySelector('.ed_pre_p');
+    const pres = card.querySelector('.ed_pre_s');
+    const postp = card.querySelector('.ed_post_p');
+    const posts = card.querySelector('.ed_post_s');
+
+    function refreshBadges(){
+      const pre = levelInfo(parseInt(prep.value), parseInt(pres.value));
+      const post = levelInfo(parseInt(postp.value), parseInt(posts.value));
+      card.querySelector('.pre-badge').innerHTML = `評価点${pre.score}／危険度<span class="risk-badge lvl-${pre.lvl}">${pre.lvl}（${pre.name}）</span>`;
+      card.querySelector('.post-badge').innerHTML = `評価点${post.score}／危険度<span class="risk-badge lvl-${post.lvl}">${post.lvl}（${post.name}）</span>`;
+      c.pre.p = parseInt(prep.value); c.pre.s = parseInt(pres.value);
+      c.post.p = parseInt(postp.value); c.post.s = parseInt(posts.value);
+      const warnNow = KY_CONFIG.riskWarnLevels.includes(post.lvl);
+      let warnDiv = card.querySelector('.risk-warning');
+      if(warnNow && !warnDiv){
+        warnDiv = document.createElement('div');
+        warnDiv.className = 'risk-warning';
+        warnDiv.textContent = '⚠ 対策後の危険度がⅡを超えています（原則Ⅱ以下を目標としてください）。対策内容を見直すか、下の確認欄にチェックしてください。';
+        card.appendChild(warnDiv);
+        state.ackHighRisk = false;
+        renderStep();
+        return;
+      } else if(!warnNow && warnDiv){
+        renderStep();
+        return;
+      }
+      scheduleSave();
+    }
+    [prep,pres,postp,posts].forEach(el=>el.addEventListener('change', refreshBadges));
+    hazardEl.addEventListener('input', ()=>{ c.hazard = hazardEl.value; scheduleSave(); });
+    actionEl.addEventListener('input', ()=>{ c.action = actionEl.value; scheduleSave(); });
+  });
+  const ack = document.getElementById('ackHighRisk');
+  if(ack) ack.addEventListener('change', ()=>{ state.ackHighRisk = ack.checked; scheduleSave(); });
+}
+
+/* ---- Step4: 安全目標 ---- */
+function stepGoalHtml(){
+  const list = adoptedList();
+  let html = '<div class="card">';
+  list.forEach((c, idx)=>{
+    html += `
+      <label>危険ポイント${idx+1}（${c.themeLabel}）の安全目標</label>
+      <input type="text" class="ed_goal" data-key="${c.key}" value="${escAttr(c.goal)}">
+    `;
+  });
+  html += '</div>';
+  return html;
+}
+
+function bindGoal(){
+  document.querySelectorAll('.ed_goal').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      const c = state.candidates.find(x=>x.key===el.dataset.key);
+      c.goal = el.value;
+      scheduleSave();
+    });
+  });
+}
+
+/* ---- Step5: 指差呼称・安全十訓・接客10大用語 ---- */
+function stepPointingHtml(){
+  const list = adoptedList();
+  let html = '<div class="card"><h2>指差呼称（各危険ポイント2点）</h2>';
+  html += `<p class="pointing-note">「試行案（未確定）」は${escHtml(KY_CONFIG.trialSourceNote)}</p>`;
+  list.forEach((c, idx)=>{
+    html += `<p style="font-size:12px;color:#8a6d00;font-weight:bold;">危険ポイント${idx+1}：${c.themeLabel}</p>`;
+    c.pointing.forEach((p, pi)=>{
+      html += `
+        <div class="pointing-row">
+          <input type="text" class="ed_pt" data-key="${c.key}" data-idx="${pi}" value="${escAttr(p.text)}">
+          <span class="pt-badge">${pointingBadgeHtml(p.text)}</span>
+        </div>`;
+    });
+  });
+  html += '</div>';
+
+  html += '<div class="card"><h2>安全十訓（2つ選択）</h2>';
+  html += kunSelectHtml('kun1', state.kun1) + `<div style="margin-top:6px;">${kunSelectHtml('kun2', state.kun2)}</div>`;
+  html += '</div>';
+
+  html += '<div class="card"><h2>接客10大用語（2つ選択）</h2>';
+  html += `<p class="word-banner">${escHtml(KY_CONFIG.serviceWordsBanner)}</p>`;
+  html += wordSelectHtml('word1', state.word1) + `<div style="margin-top:6px;">${wordSelectHtml('word2', state.word2)}</div>`;
+  html += '</div>';
+
+  return html;
+}
+
+function kunSelectHtml(id, selected){
+  const opts = KY_CONFIG.safetyPrinciples.map(k=>`<option value="${k.id}" ${k.id===selected?'selected':''}>${k.id}. ${k.text}</option>`).join('');
+  return `<select id="${id}">${opts}</select>`;
+}
+function wordSelectHtml(id, selected){
+  const opts = KY_CONFIG.serviceWords.map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${w.id}. ${w.text}</option>`).join('');
+  return `<select id="${id}">${opts}</select>`;
+}
+
+function bindPointing(){
+  document.querySelectorAll('.ed_pt').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      const c = state.candidates.find(x=>x.key===el.dataset.key);
+      c.pointing[parseInt(el.dataset.idx)].text = el.value;
+      el.nextElementSibling.innerHTML = pointingBadgeHtml(el.value);
+      scheduleSave();
+    });
+  });
+  ['kun1','kun2','word1','word2'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener('change', ()=>{ state[id] = parseInt(el.value); scheduleSave(); });
+  });
+}
+
+/* ---- Step6: 最終確認・保存（プレビューカルーセル） ---- */
+let finalPage = 0, finalTotal = 0;
+
+function buildPages(basic, list, kun1, kun2, word1, word2){
+  const pages = [];
+  pages.push(`
+    <div class="page-title">① 日付・作業員</div>
+    <div class="page-content">
+      <div class="info-line"><span>作業日</span><span>${formatDateJP(basic.dateIso)}</span></div>
+      <div class="info-line"><span>作業員数</span><span>${basic.workers} 名</span></div>
+      <div class="info-line"><span>作業内容</span><span style="font-size:13px;">${escHtml(basic.work)}</span></div>
+      <div class="info-line"><span>本日の天気</span><span style="font-size:12px;font-weight:normal;">${escHtml(basic.weather)}</span></div>
+    </div>
+  `);
+
+  let p2 = `<div class="page-title">② 作業での危険ポイント</div><div class="page-content">`;
+  list.forEach((h,idx)=>{
+    const pre = levelInfo(h.pre.p, h.pre.s);
+    p2 += `<div class="hz-card"><div class="hz-num">危険ポイント${idx+1}（${h.themeLabel}）</div><div class="hz-text">${escHtml(h.hazard)}</div>
+      <div class="hz-scores"><span class="score-chip">評価点 ${pre.score}</span><span class="score-chip">危険度 ${pre.lvl}（${pre.name}）</span></div></div>`;
+  });
+  pages.push(p2 + '</div>');
+
+  let p3 = `<div class="page-title">③ 私達はこうします</div><div class="page-content">`;
+  list.forEach((h,idx)=>{
+    const post = levelInfo(h.post.p, h.post.s);
+    p3 += `<div class="hz-card"><div class="hz-num">危険ポイント${idx+1} への対策</div><div class="hz-text">${escHtml(h.action)}</div>
+      <div class="hz-scores"><span class="score-chip">評価点 ${post.score}</span><span class="score-chip">危険度 ${post.lvl}（${post.name}）</span></div></div>`;
+  });
+  pages.push(p3 + '</div>');
+
+  let p4 = `<div class="page-title">④ 本日の安全目標</div><div class="page-content">`;
+  list.forEach((h,idx)=>{ p4 += `<div class="goal-card">【危険ポイント${idx+1}】${escHtml(h.goal)}</div>`; });
+  pages.push(p4 + '</div>');
+
+  let p5 = `<div class="page-title">⑤ 指差呼称</div><div class="page-content">`;
+  list.forEach((h,idx)=>{
+    h.pointing.forEach(pt=>{
+      p5 += `<div class="pt-card"><div class="pt-num">危険ポイント${idx+1} 関連 ${pointingBadgeHtml(pt.text)}</div><div>「${escHtml(pt.text)}」</div></div>`;
+    });
+  });
+  pages.push(p5 + '</div>');
+
+  pages.push(`
+    <div class="page-title">⑥ 安全十訓</div>
+    <div class="page-content">
+      <div class="kun-card">${escHtml(KY_CONFIG.safetyPrinciples.find(k=>k.id===kun1).text)}</div>
+      <div class="kun-card">${escHtml(KY_CONFIG.safetyPrinciples.find(k=>k.id===kun2).text)}</div>
+    </div>`);
+
+  pages.push(`
+    <div class="page-title">⑦ 接客10大用語</div>
+    <div class="page-content">
+      <p class="word-banner">${escHtml(KY_CONFIG.serviceWordsBanner)}</p>
+      <div class="word-card">${escHtml(KY_CONFIG.serviceWords.find(w=>w.id===word1).text)}</div>
+      <div class="word-card">${escHtml(KY_CONFIG.serviceWords.find(w=>w.id===word2).text)}</div>
+    </div>`);
+
+  return pages;
+}
+
+function stepFinalHtml(){
+  return `
+    <div class="carousel" style="box-shadow:none;padding:0;min-height:auto;">
+      <div id="finalPagesContainer"></div>
+      <div class="nav-row">
+        <button class="nav-btn" id="finalPrevBtn" onclick="finalNav(-1)">◀ 前へ</button>
+        <div class="step-dots" id="finalDots" style="margin:0;"></div>
+        <button class="nav-btn" id="finalNextBtn" onclick="finalNav(1)">次へ ▶</button>
+      </div>
+    </div>
+    <button class="gen-btn save-btn" id="saveRecordBtn" style="margin-top:14px;">この内容で保存する</button>
+  `;
+}
+
+function renderFinal(){
+  const pages = buildPages(state.basic, adoptedList(), state.kun1, state.kun2, state.word1, state.word2);
+  const container = document.getElementById('finalPagesContainer');
+  container.innerHTML = pages.map((p,idx)=>`<div class="page ${idx===0?'active':''}" id="fpage${idx}">${p}</div>`).join('');
+  document.getElementById('finalDots').innerHTML = pages.map((_,idx)=>`<div class="step-dot ${idx===0?'active':''}" id="fdot${idx}"></div>`).join('');
+  finalTotal = pages.length;
+  finalPage = 0;
+  updateFinalNav();
+}
+
+function finalNav(dir){
+  const next = finalPage + dir;
+  if(next<0 || next>=finalTotal) return;
+  document.getElementById('fpage'+finalPage).classList.remove('active');
+  document.getElementById('fdot'+finalPage).classList.remove('active');
+  finalPage = next;
+  document.getElementById('fpage'+finalPage).classList.add('active');
+  document.getElementById('fdot'+finalPage).classList.add('active');
+  updateFinalNav();
+}
+
+function updateFinalNav(){
+  document.getElementById('finalPrevBtn').disabled = finalPage===0;
+  document.getElementById('finalNextBtn').disabled = finalPage===finalTotal-1;
+}
+
+function bindFinal(){
+  renderFinal();
+  document.getElementById('saveRecordBtn').addEventListener('click', saveCurrentRecord);
+}
+
+function saveCurrentRecord(){
+  const records = loadRecords();
+  const data = {
+    basic: state.basic,
+    candidates: state.candidates,
+    kun1: state.kun1, kun2: state.kun2,
+    word1: state.word1, word2: state.word2
+  };
+  const nowIso = new Date().toISOString();
+  if(state.recordId){
+    const rec = records.find(r=>r.id===state.recordId);
+    if(rec){
+      rec.data = data;
+      rec.updatedAt = nowIso;
+      rec.date = state.basic.dateIso;
+    } else {
+      records.push({ id: state.recordId, date: state.basic.dateIso, createdAt: nowIso, updatedAt: nowIso, data });
+    }
+  } else {
+    records.push({ id: uid(), date: state.basic.dateIso, createdAt: nowIso, updatedAt: nowIso, data });
+  }
+  saveRecords(records);
+  clearDraft();
+  clearTimeout(saveTimer);
+  alert('保存しました。');
+  state = null;
+  showScreen('home');
+  refreshHome();
+}
+
+/* ---- ステップごとのイベントバインド ---- */
+function bindStepEvents(step){
+  if(step===1) bindBasic();
+  if(step===2) bindCandidates();
+  if(step===3) bindEdit();
+  if(step===4) bindGoal();
+  if(step===5) bindPointing();
+  if(step===6) bindFinal();
+}
+
+/* =========================================================================
+   保存済み一覧
+   ========================================================================= */
+function renderSavedList(){
+  const records = loadRecords().slice().sort((a,b)=> (b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+  const body = document.getElementById('savedListBody');
+  if(records.length===0){
+    body.innerHTML = '<div class="empty-note">保存済みのKY活動表はまだありません。</div>';
+    return;
+  }
+  body.innerHTML = records.map(r=>{
+    const list = (r.data.candidates||[]).filter(c=>c.adopted);
+    return `
+      <div class="saved-item">
+        <div class="date">${formatDateJP(r.date)}</div>
+        <div class="meta">${escHtml(r.data.basic.work||'')}／危険ポイント${list.length}件</div>
+        <div class="saved-actions">
+          <button onclick="openRecord('${r.id}')">開く</button>
+          <button onclick="editRecord('${r.id}')">編集する</button>
+          <button onclick="duplicateRecord('${r.id}')">複製する</button>
+          <button class="danger" onclick="deleteRecord('${r.id}')">削除</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function findRecord(id){ return loadRecords().find(r=>r.id===id); }
+
+function openRecord(id){
+  const rec = findRecord(id);
+  if(!rec) return;
+  const pages = buildPages(rec.data.basic, (rec.data.candidates||[]).filter(c=>c.adopted), rec.data.kun1, rec.data.kun2, rec.data.word1, rec.data.word2);
+  const container = document.getElementById('viewPagesContainer');
+  container.innerHTML = pages.map((p,idx)=>`<div class="page ${idx===0?'active':''}" id="vpage${idx}">${p}</div>`).join('');
+  document.getElementById('viewDots').innerHTML = pages.map((_,idx)=>`<div class="step-dot ${idx===0?'active':''}" id="vdot${idx}"></div>`).join('');
+  window._viewTotal = pages.length;
+  window._viewPage = 0;
+  document.getElementById('viewPrevBtn').disabled = true;
+  document.getElementById('viewNextBtn').disabled = pages.length<=1;
+  showScreen('view');
+}
+
+function viewNavPage(dir){
+  const next = window._viewPage + dir;
+  if(next<0 || next>=window._viewTotal) return;
+  document.getElementById('vpage'+window._viewPage).classList.remove('active');
+  document.getElementById('vdot'+window._viewPage).classList.remove('active');
+  window._viewPage = next;
+  document.getElementById('vpage'+window._viewPage).classList.add('active');
+  document.getElementById('vdot'+window._viewPage).classList.add('active');
+  document.getElementById('viewPrevBtn').disabled = window._viewPage===0;
+  document.getElementById('viewNextBtn').disabled = window._viewPage===window._viewTotal-1;
+}
+
+function editRecord(id){
+  const rec = findRecord(id);
+  if(!rec) return;
+  if(loadDraft() && !confirm('現在の下書きは上書きされます。この保存済みKYを編集しますか？')) return;
+  state = {
+    recordId: rec.id,
+    createdAt: rec.createdAt,
+    step: 6,
+    basic: rec.data.basic,
+    candidates: rec.data.candidates,
+    ackHighRisk: true,
+    kun1: rec.data.kun1, kun2: rec.data.kun2,
+    word1: rec.data.word1, word2: rec.data.word2,
+    updatedAt: null
+  };
+  goToCreate();
+}
+
+function duplicateRecord(id){
+  const rec = findRecord(id);
+  if(!rec) return;
+  if(loadDraft() && !confirm('現在の下書きは上書きされます。この内容を複製して新規作成しますか？')) return;
+  const cloned = JSON.parse(JSON.stringify(rec.data));
+  cloned.candidates.forEach(c=> c.key = uid());
+  cloned.basic.dateIso = isoFromDate(new Date());
+  state = {
+    recordId: null,
+    createdAt: null,
+    step: 1,
+    basic: cloned.basic,
+    candidates: cloned.candidates,
+    ackHighRisk: true,
+    kun1: cloned.kun1, kun2: cloned.kun2,
+    word1: cloned.word1, word2: cloned.word2,
+    updatedAt: null
+  };
+  goToCreate();
+}
+
+function deleteRecord(id){
+  const rec = findRecord(id);
+  if(!rec) return;
+  if(!confirm(`${formatDateJP(rec.date)} のKY活動表を削除します。この操作は元に戻せません。よろしいですか？`)) return;
+  const records = loadRecords().filter(r=>r.id!==id);
+  saveRecords(records);
+  renderSavedList();
+  refreshHome();
+}
+
+/* =========================================================================
+   簡易エスケープ
+   ========================================================================= */
+function escHtml(str){
+  return String(str==null?'':str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escAttr(str){ return escHtml(str); }
+
+/* =========================================================================
+   初期化
+   ========================================================================= */
+window.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('subtitle').textContent = KY_CONFIG.subTitle;
+  refreshHome();
+  showScreen('home');
+});
+
+// 一覧画面を開くたびに再描画
+const _origShowScreen = showScreen;
+showScreen = function(name){
+  _origShowScreen(name);
+  if(name==='savedList') renderSavedList();
+  if(name==='home') refreshHome();
+};
+</script>
+</body>
+</html>
