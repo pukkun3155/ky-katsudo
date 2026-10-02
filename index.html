@@ -96,6 +96,7 @@
   .grp-A { background:#c2185b; }
   .grp-B { background:#00838f; }
   .grp-C { background:#6a1b9a; }
+  .grp-I { background:#b26a00; }
 
   .candidate-card {
     border:1px solid #e3d9b8; background:#fffdf5;
@@ -256,6 +257,14 @@
   }
   .modal-card p { font-size:13px; line-height:1.6; }
   .modal-actions { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+
+  /* ---------- 一括貼り付け登録 ---------- */
+  .paste-open-btn { margin:0 0 12px; background:#fff3e0; color:#b26a00; border:1px solid #ffcc80; }
+  .paste-textarea { min-height:220px; font-size:12px; font-family:Menlo,Consolas,monospace; }
+  .paste-error { color:#c62828; font-size:12px; line-height:1.5; margin-top:8px; white-space:pre-wrap; }
+  .paste-result ul { margin:4px 0 8px; padding-left:18px; font-size:12px; line-height:1.6; }
+  .paste-result .ng { color:#c62828; }
+  .paste-result .warn { color:#8a6d00; }
 </style>
 </head>
 <body>
@@ -285,6 +294,7 @@
 
   <!-- ============ CREATE FLOW ============ -->
   <div id="screenCreate" class="screen">
+    <button class="sub-btn paste-open-btn" onclick="openPasteModal()">📋 ChatGPTから一括入力</button>
     <div class="step-dots" id="stepDots"></div>
     <div id="stepBody"></div>
     <div class="nav-row">
@@ -315,6 +325,44 @@
         <button class="sub-btn" onclick="confirmImport('add')">追加する</button>
         <button class="sub-btn" style="background:#fdecea;color:#c62828;" onclick="confirmImport('replace')">置換する（既存を上書き）</button>
         <button class="link-btn" style="margin-top:6px;" onclick="closeImportModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 一括貼り付け登録 MODAL ============ -->
+  <div id="pasteModal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 style="font-size:14px;color:#1a3c6e;margin:0 0 10px;">ChatGPTから一括入力</h2>
+      <p style="margin:0 0 6px;">ChatGPTで作成した <b>KY_IMPORT_V1</b> 形式のデータを貼り付けてください。読み込み後は編集画面に反映されるだけで、保存はされません。</p>
+      <textarea id="pasteInput" class="paste-textarea" placeholder="KY_IMPORT_V1&#10;date: YYYY-MM-DD&#10;hazard: ...&#10;..."></textarea>
+      <div id="pasteError" class="paste-error"></div>
+      <div class="modal-actions">
+        <button class="sub-btn" onclick="runPasteImport()">内容を読み込む</button>
+        <button class="link-btn" style="margin-top:6px;" onclick="closePasteModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 一括貼り付け：日付変更確認 MODAL ============ -->
+  <div id="pasteDateModal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 style="font-size:14px;color:#1a3c6e;margin:0 0 10px;">日付の確認</h2>
+      <div id="pasteDateBody"></div>
+      <div class="modal-actions">
+        <button class="sub-btn" onclick="resolvePasteDate('change')">変更する</button>
+        <button class="sub-btn" onclick="resolvePasteDate('keep')">変更しない</button>
+        <button class="link-btn" style="margin-top:6px;" onclick="resolvePasteDate('cancel')">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 一括貼り付け：結果 MODAL ============ -->
+  <div id="pasteResultModal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 style="font-size:14px;color:#1a3c6e;margin:0 0 10px;">読み込み完了</h2>
+      <div id="pasteResultBody" class="paste-result"></div>
+      <div class="modal-actions">
+        <button class="sub-btn" onclick="closePasteResult()">編集画面で内容を確認する</button>
       </div>
     </div>
   </div>
@@ -1277,9 +1325,9 @@ function stepCandidatesHtml(){
   if(state.candidates.length===0){
     state.candidates = generateCandidates(state.basic);
   }
-  const groupLabel = { A:'グループA：お客様・車両・接触系', B:'グループB：天候・季節・体調系', C:'グループC：作業内容・混雑・設備系' };
+  const groupLabel = { A:'グループA：お客様・車両・接触系', B:'グループB：天候・季節・体調系', C:'グループC：作業内容・混雑・設備系', [PASTE_IMPORT_GROUP]:'ChatGPTから一括入力' };
   let html = '<div class="card"><p class="step-hint" style="margin-top:0;">状況に応じて選ばれた3テーマ×2案、計6候補です。採用するものをON/OFFで選んでください（1〜3個程度が目安）。文言は次のステップで自由に編集できます。</p>';
-  ['A','B','C'].forEach(g=>{
+  [PASTE_IMPORT_GROUP,'A','B','C'].forEach(g=>{
     const items = state.candidates.filter(c=>c.group===g);
     if(items.length===0) return;
     html += `<div style="margin:10px 0 4px;"><span class="group-badge grp-${g}">${g}</span><b style="font-size:12px;color:#555;">${groupLabel[g]}（${items[0].themeLabel}）</b></div>`;
@@ -1753,6 +1801,203 @@ function deleteRecord(id){
   saveRecords(records);
   renderSavedList();
   refreshHome();
+}
+
+/* =========================================================================
+   一括貼り付け登録（ChatGPTから一括入力）
+   KY_IMPORT_V1 形式のテキストを解析し、編集中の state に反映する。
+   保存済みKYは直接変更しない（反映後、ユーザーが確認して既存の保存操作で確定する）。
+   評価点・危険度・指差呼称の分類は貼り付けデータを信用せず、アプリ側で判定する。
+   ========================================================================= */
+const PASTE_IMPORT_HEADER = 'KY_IMPORT_V1';
+const PASTE_IMPORT_GROUP = 'I';
+const PASTE_IMPORT_THEME_ID = 'paste_import';
+const PASTE_IMPORT_KEYS = ['date','hazard','pre_probability','pre_severity','action','post_probability','post_severity','goal','pointing1','pointing2','kun1','kun2','word1','word2'];
+const PASTE_RISK_FALLBACK = 3; // 可能性・重大性が不正な場合は最も高い値を仮設定し、警告で見直しを促す
+
+function toHalfWidthDigits(s){
+  return String(s).replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+}
+
+function isValidIsoDate(s){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  return isoFromDate(dateFromIso(s)) === s; // 2026-02-30 等の存在しない日付を弾く
+}
+
+function parsePasteImport(raw){
+  const lines = String(raw||'').replace(/\r\n?/g,'\n').split('\n');
+  if(!lines.some(l=>l.trim())) return { fatal:'貼り付けデータが空です。' };
+  const headerIdx = lines.findIndex(l=>l.trim()===PASTE_IMPORT_HEADER);
+  if(headerIdx === -1) return { fatal:`「${PASTE_IMPORT_HEADER}」の行が見つかりません。ChatGPTの出力ブロックをそのまま貼り付けてください。` };
+
+  const values = {}, dupKeys = new Set(), unknownKeys = [], badLines = [];
+  for(const line of lines.slice(headerIdx+1)){
+    const t = line.trim();
+    if(!t || t.startsWith('```')) continue;
+    if(t === PASTE_IMPORT_HEADER) return { fatal:`「${PASTE_IMPORT_HEADER}」が複数あります。1件ずつ貼り付けてください。` };
+    const m = t.match(/^([A-Za-z0-9_]+)\s*[:：]\s*(.*)$/);
+    if(!m){ badLines.push(t); continue; }
+    const key = m[1].toLowerCase();
+    if(!PASTE_IMPORT_KEYS.includes(key)){ unknownKeys.push(key); continue; }
+    if(key in values) dupKeys.add(key);
+    values[key] = m[2].trim();
+  }
+  dupKeys.forEach(k=>delete values[k]); // 重複キーはどちらが正しいか判断できないため両方採用しない
+
+  if(dupKeys.has('hazard')) return { fatal:'hazard（危険ポイント）が複数あります。1つにしてください。' };
+  if(!values.hazard) return { fatal:'必須項目 hazard（危険ポイント）がありません。' };
+  return { values, dupKeys:[...dupKeys], unknownKeys, badLines };
+}
+
+let pendingPaste = null;
+
+function openPasteModal(){
+  document.getElementById('pasteError').textContent = '';
+  document.getElementById('pasteModal').classList.add('show');
+  document.getElementById('pasteInput').focus();
+}
+
+function closePasteModal(){
+  document.getElementById('pasteModal').classList.remove('show');
+  pendingPaste = null;
+}
+
+function runPasteImport(){
+  const parsed = parsePasteImport(document.getElementById('pasteInput').value);
+  if(parsed.fatal){
+    document.getElementById('pasteError').textContent = '⚠ ' + parsed.fatal;
+    return;
+  }
+  document.getElementById('pasteError').textContent = '';
+  const d = parsed.values.date;
+  if(d && isValidIsoDate(d) && d !== state.basic.dateIso){
+    pendingPaste = parsed;
+    const [y,m,dd] = d.split('-').map(Number);
+    document.getElementById('pasteDateBody').innerHTML =
+      `<p>貼り付けデータの日付は<b>${y}/${m}/${dd}</b>です。<br>現在の日付（${escHtml(formatDateJP(state.basic.dateIso))}）を変更しますか？</p>`;
+    document.getElementById('pasteDateModal').classList.add('show');
+    return;
+  }
+  applyPasteImport(parsed, false);
+}
+
+function resolvePasteDate(choice){
+  document.getElementById('pasteDateModal').classList.remove('show');
+  const parsed = pendingPaste;
+  pendingPaste = null;
+  if(choice === 'cancel' || !parsed) return; // 貼り付け画面に戻る（何も反映しない）
+  applyPasteImport(parsed, choice === 'change');
+}
+
+function applyPasteImport(parsed, changeDate){
+  const v = parsed.values;
+  const ok = [], ng = [], warn = [];
+
+  parsed.dupKeys.forEach(k=>ng.push(`${k}：同じキーが複数あります（反映しません）`));
+  PASTE_IMPORT_KEYS.forEach(k=>{
+    if(!(k in v) && !parsed.dupKeys.includes(k)) ng.push(`${k}：項目がありません`);
+  });
+  parsed.unknownKeys.forEach(k=>warn.push(`${k}：不明な項目のため無視しました`));
+  parsed.badLines.forEach(l=>warn.push(`「${l}」：解釈できない行のため無視しました`));
+
+  // ---- date ----
+  let dateChanged = false;
+  if('date' in v){
+    if(!isValidIsoDate(v.date)){
+      ng.push(`date：日付形式が不正です（「${v.date}」。YYYY-MM-DD形式で指定）`);
+    } else if(v.date === state.basic.dateIso){
+      ok.push(`date：${formatDateJP(v.date)}`);
+    } else if(changeDate){
+      state.basic.dateIso = v.date;
+      dateChanged = true;
+      ok.push(`date：${formatDateJP(v.date)} に変更（天気を再取得）`);
+    } else {
+      warn.push(`date：日付は変更しませんでした（現在：${formatDateJP(state.basic.dateIso)}）`);
+    }
+  }
+
+  // ---- 可能性・重大性（1〜3のみ） ----
+  const fallbackKeys = [];
+  function riskValue(key){
+    if(!(key in v)){ fallbackKeys.push(key); return PASTE_RISK_FALLBACK; }
+    const s = toHalfWidthDigits(v[key]);
+    if(/^[1-3]$/.test(s)){ ok.push(`${key}：${s}`); return parseInt(s); }
+    ng.push(`${key}：1〜3以外の値です（「${v[key]}」）`);
+    fallbackKeys.push(key);
+    return PASTE_RISK_FALLBACK;
+  }
+  const pre = { p: riskValue('pre_probability'), s: riskValue('pre_severity') };
+  const post = { p: riskValue('post_probability'), s: riskValue('post_severity') };
+  if(fallbackKeys.length){
+    warn.push(`${fallbackKeys.join('・')}：仮に${PASTE_RISK_FALLBACK}を設定しました。編集画面で必ず選び直してください`);
+  }
+
+  // ---- 文章項目 ----
+  ok.push('hazard：危険ポイント');
+  if(v.action) ok.push('action：私達はこうします');
+  if(v.goal) ok.push('goal：本日の安全目標');
+
+  // ---- 指差呼称（分類はアプリ側マスターで判定） ----
+  const pointing = ['pointing1','pointing2'].map(k=>{
+    if(!v[k]) return { text:'' };
+    const match = isOfficialText(v[k]);
+    const cls = match ? (match.status==='basic' ? '手順書' : '試行案（未確定）') : '手順書外・独自項目';
+    ok.push(`${k}：${v[k]}［${cls}］`);
+    return { text: v[k] };
+  });
+
+  // ---- 安全十訓・接客10大用語（マスター完全一致のみ採用） ----
+  [['kun1','kun2', KY_CONFIG.safetyPrinciples, '安全十訓'], ['word1','word2', KY_CONFIG.serviceWords, '接客10大用語']].forEach(([k1,k2,master,name])=>{
+    [k1,k2].forEach(k=>{
+      if(!(k in v)) return;
+      const hit = master.find(x=>x.text === v[k]);
+      if(hit){ state[k] = hit.id; ok.push(`${k}：${hit.id}. ${hit.text}`); }
+      else ng.push(`${k}：${name}マスターと一致しません（「${v[k]}」）`);
+    });
+  });
+
+  // ---- 危険ポイント候補として反映（前回の一括入力分は置き換え、他の候補は不採用に） ----
+  const prevAdopted = state.candidates.filter(c=>c.adopted && c.themeId!==PASTE_IMPORT_THEME_ID).length;
+  state.candidates = state.candidates.filter(c=>c.themeId!==PASTE_IMPORT_THEME_ID);
+  state.candidates.forEach(c=>{ c.adopted = false; });
+  state.candidates.unshift({
+    key: uid(),
+    group: PASTE_IMPORT_GROUP,
+    themeId: PASTE_IMPORT_THEME_ID,
+    themeLabel: '一括入力',
+    variantLabel: 'I1',
+    adopted: true,
+    hazard: v.hazard,
+    pre, action: v.action || '', post,
+    goal: v.goal || '',
+    pointing
+  });
+  if(prevAdopted) warn.push(`それまで採用していた危険ポイント${prevAdopted}件は不採用に切り替えました（②で再度ONにできます）`);
+
+  const postLv = levelInfo(post.p, post.s);
+  state.ackHighRisk = false;
+  if(KY_CONFIG.riskWarnLevels.includes(postLv.lvl)){
+    warn.push(`対策後の危険度が${postLv.lvl}（${postLv.name}）でⅡを超えています。対策を見直すか、③で確認チェックを入れてください`);
+  }
+
+  // ---- 編集画面（③）へ反映し、下書きとして自動保存 ----
+  state.step = 3;
+  renderStep();
+  if(dateChanged) refreshWeatherForCurrentDate();
+  scheduleSaveNow();
+
+  document.getElementById('pasteModal').classList.remove('show');
+  document.getElementById('pasteInput').value = '';
+  const li = arr => '<ul>' + arr.map(x=>`<li>${escHtml(x)}</li>`).join('') + '</ul>';
+  document.getElementById('pasteResultBody').innerHTML =
+    `<p style="margin:0;">反映：<b>${ok.length}項目</b>（まだ保存されていません。内容を確認して⑥で保存してください）</p>` + li(ok)
+    + (ng.length ? `<p class="ng" style="margin:0;"><b>未反映：${ng.length}項目</b></p><div class="ng">${li(ng)}</div>` : '')
+    + (warn.length ? `<p class="warn" style="margin:0;"><b>注意</b></p><div class="warn">${li(warn)}</div>` : '');
+  document.getElementById('pasteResultModal').classList.add('show');
+}
+
+function closePasteResult(){
+  document.getElementById('pasteResultModal').classList.remove('show');
 }
 
 /* =========================================================================
